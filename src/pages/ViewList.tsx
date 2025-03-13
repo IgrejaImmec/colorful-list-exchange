@@ -1,15 +1,34 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useList } from '../context/ListContext';
 import ListItem from '../components/ListItem';
 import { Button } from '@/components/ui/button';
-import { Share2 } from 'lucide-react';
+import { Share2, Loader2, RefreshCw } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 
 const ViewList = () => {
-  const { items, listTitle, listDescription, listStyle } = useList();
+  const { items, listTitle, listDescription, listStyle, loading, refreshList } = useList();
   const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
   const { toast } = useToast();
+  
+  useEffect(() => {
+    // Apply custom font if needed
+    if (listStyle.fontFamily) {
+      const fontName = listStyle.fontFamily.split(',')[0].replace(/['"]+/g, '');
+      
+      // Only load if not a system font
+      if (!['Inter', 'Roboto', 'Arial', 'sans-serif'].includes(fontName)) {
+        const link = document.createElement('link');
+        link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(' ', '+')}:wght@400;500;700&display=swap`;
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+        
+        return () => {
+          document.head.removeChild(link);
+        };
+      }
+    }
+  }, [listStyle.fontFamily]);
   
   const filteredItems = items.filter(item => {
     if (filter === 'all') return true;
@@ -46,37 +65,67 @@ const ViewList = () => {
   
   return (
     <div 
-      className="min-h-screen p-6 transition-all duration-500 page-transition"
+      className={`min-h-screen p-6 transition-all duration-500 page-transition`}
       style={{ 
         backgroundColor: listStyle.backgroundColor,
         fontFamily: listStyle.fontFamily,
-        color: isLightColor(listStyle.backgroundColor) ? '#333333' : '#ffffff',
-        paddingBottom: '5rem'
+        color: listStyle.textColor || (isLightColor(listStyle.backgroundColor) ? '#333333' : '#ffffff'),
+        paddingBottom: '5rem',
+        backgroundImage: listStyle.backgroundImage ? 
+          `url(${listStyle.backgroundImage})` : 
+          (listStyle.backgroundPattern || ''),
+        backgroundSize: listStyle.backgroundImage ? 'cover' : 'auto',
+        backgroundPosition: 'center',
+        backgroundRepeat: listStyle.backgroundImage ? 'no-repeat' : 'repeat',
       }}
     >
       <div className="max-w-md mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">{listTitle}</h1>
-          
-          <Button 
-            onClick={handleShare}
-            variant="outline" 
-            size="icon"
-            className="h-9 w-9 rounded-full"
-            style={{
-              backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
-              color: listStyle.accentColor,
-              borderColor: hexToRgba(listStyle.accentColor, 0.2)
+          <h1 
+            className="text-2xl font-bold"
+            style={{ 
+              color: listStyle.titleColor || (isLightColor(listStyle.backgroundColor) ? '#000000' : '#ffffff')
             }}
           >
-            <Share2 size={16} />
-          </Button>
+            {listTitle}
+            {loading && <Loader2 className="w-5 h-5 ml-2 inline animate-spin" />}
+          </h1>
+          
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => refreshList()}
+              variant="outline" 
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              style={{
+                backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
+                color: listStyle.accentColor,
+                borderColor: hexToRgba(listStyle.accentColor, 0.2)
+              }}
+            >
+              <RefreshCw size={16} />
+            </Button>
+            
+            <Button 
+              onClick={handleShare}
+              variant="outline" 
+              size="icon"
+              className="h-9 w-9 rounded-full"
+              style={{
+                backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
+                color: listStyle.accentColor,
+                borderColor: hexToRgba(listStyle.accentColor, 0.2)
+              }}
+            >
+              <Share2 size={16} />
+            </Button>
+          </div>
         </div>
         
         <p className="mb-6 opacity-80">{listDescription}</p>
         
         <div 
-          className="flex gap-2 mb-6 p-1 rounded-lg"
+          className={`flex gap-2 mb-6 p-1 rounded-lg`}
           style={{
             backgroundColor: hexToRgba(isLightColor(listStyle.backgroundColor) ? '#000000' : '#ffffff', 0.05)
           }}
@@ -118,14 +167,25 @@ const ViewList = () => {
           </button>
         </div>
         
-        {filteredItems.length === 0 ? (
+        {loading && filteredItems.length === 0 ? (
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin opacity-70" />
+            <p>Carregando itens...</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="text-center py-8 opacity-70">
             <p>Nenhum item encontrado.</p>
           </div>
         ) : (
-          <div>
+          <div className={`space-y-${listStyle.itemSpacing}`}>
             {filteredItems.map((item) => (
-              <ListItem key={item.id} item={item} viewMode={true} />
+              <ListItem 
+                key={item.id} 
+                item={item} 
+                viewMode={true} 
+                customBorderRadius={listStyle.borderRadius}
+                accentColor={listStyle.accentColor}
+              />
             ))}
           </div>
         )}

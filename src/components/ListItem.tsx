@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useList, ListItem as ListItemType } from '../context/ListContext';
-import { Trash2, Check, Gift } from 'lucide-react';
+import { Trash2, Check, Gift, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,10 +12,18 @@ interface ListItemProps {
   item: ListItemType;
   editable?: boolean;
   viewMode?: boolean;
+  customBorderRadius?: string;
+  accentColor?: string;
 }
 
-const ListItem: React.FC<ListItemProps> = ({ item, editable = false, viewMode = false }) => {
-  const { removeItem, claimItem } = useList();
+const ListItem: React.FC<ListItemProps> = ({ 
+  item, 
+  editable = false, 
+  viewMode = false,
+  customBorderRadius,
+  accentColor
+}) => {
+  const { removeItem, claimItem, loading } = useList();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -31,23 +39,35 @@ const ListItem: React.FC<ListItemProps> = ({ item, editable = false, viewMode = 
       return;
     }
     
-    claimItem(item.id, name, phone);
-    toast({
-      title: "Item reservado com sucesso!",
-      description: "Obrigado por sua contribuição.",
-    });
-    setOpen(false);
+    claimItem(item.id, name, phone)
+      .then(() => {
+        toast({
+          title: "Item reservado com sucesso!",
+          description: "Obrigado por sua contribuição.",
+        });
+        setOpen(false);
+      });
+  };
+  
+  const handleRemove = () => {
+    removeItem(item.id)
+      .then(() => {
+        toast({
+          title: "Item removido",
+          description: "O item foi removido da sua lista.",
+        });
+      });
   };
   
   return (
-    <div className={`glass-card p-4 mb-4 transition-all duration-300 item-transition ${item.claimed ? 'opacity-70' : ''}`}>
+    <div className={`glass-card p-4 mb-4 transition-all duration-300 item-transition ${item.claimed ? 'opacity-70' : ''} ${customBorderRadius || ''}`}>
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <h3 className="font-medium text-lg">{item.name}</h3>
           <p className="text-muted-foreground text-sm mt-1">{item.description}</p>
           
           {item.claimed && (
-            <div className="mt-2 flex items-center text-sm text-green-600">
+            <div className="mt-2 flex items-center text-sm" style={{ color: accentColor || '#0078ff' }}>
               <Check size={16} className="mr-1" />
               <span>Reservado por {item.claimedBy?.name}</span>
             </div>
@@ -57,21 +77,24 @@ const ListItem: React.FC<ListItemProps> = ({ item, editable = false, viewMode = 
         <div>
           {editable && (
             <button 
-              onClick={() => removeItem(item.id)}
+              onClick={handleRemove}
               className="p-2 text-muted-foreground hover:text-destructive transition-colors duration-200"
               aria-label="Remover item"
+              disabled={loading}
             >
-              <Trash2 size={18} />
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
             </button>
           )}
           
           {viewMode && !item.claimed && (
             <button 
               onClick={() => setOpen(true)}
-              className="p-2 text-primary hover:text-primary/80 transition-colors duration-200"
+              className="p-2 transition-colors duration-200"
+              style={{ color: accentColor || '#0078ff' }}
               aria-label="Reservar item"
+              disabled={loading}
             >
-              <Gift size={18} />
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Gift size={18} />}
             </button>
           )}
         </div>
@@ -112,7 +135,14 @@ const ListItem: React.FC<ListItemProps> = ({ item, editable = false, viewMode = 
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={handleClaim}>Confirmar Reserva</Button>
+            <Button 
+              onClick={handleClaim} 
+              disabled={loading}
+              style={{ backgroundColor: accentColor }}
+            >
+              {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+              Confirmar Reserva
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
