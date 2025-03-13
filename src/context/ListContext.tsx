@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, ExtendedListStyle } from '@/lib/api';
 import { useToast } from "@/components/ui/use-toast";
@@ -147,7 +148,8 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const newItem = await api.addItem(name, description);
+      // Fix: Add listId as the first parameter to match expected 3 arguments
+      const newItem = await api.addItem(listId, name, description);
       setItems(prev => [...prev, newItem]);
     } catch (err) {
       handleError(err, 'Falha ao adicionar item');
@@ -161,7 +163,8 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      await api.deleteItem(id);
+      // Fix: Add listId as the first parameter to match expected 2 arguments
+      await api.deleteItem(listId, id);
       setItems(prev => prev.filter(item => item.id !== id));
     } catch (err) {
       handleError(err, 'Falha ao remover item');
@@ -175,7 +178,8 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const updatedItem = await api.updateItem(id, data);
+      // Fix: Add listId as the first parameter to match expected 3 arguments
+      const updatedItem = await api.updateItem(listId, id, data);
       setItems(prev => prev.map(item => 
         item.id === id ? updatedItem : item
       ));
@@ -191,7 +195,8 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const updatedItem = await api.claimItem(id, name, phone);
+      // Fix: Add listId as the first parameter to match expected 4 arguments
+      const updatedItem = await api.claimItem(listId, id, name, phone);
       setItems(prev => prev.map(item => 
         item.id === id ? updatedItem : item
       ));
