@@ -1,14 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useList } from '../context/ListContext';
+import { useLists } from '../context/ListsContext';
 import ListItem from '../components/ListItem';
 import { Button } from '@/components/ui/button';
-import { Share2, Loader2, RefreshCw } from 'lucide-react';
+import { Share2, Loader2, RefreshCw, Printer } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import Logo from '@/components/Logo';
 
 const ViewList = () => {
   const { items, listTitle, listDescription, listImage, listStyle, loading, refreshList, getShareableLink } = useList();
+  const { isPrinting } = useLists();
   const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
   const { toast } = useToast();
   
@@ -64,9 +66,13 @@ const ViewList = () => {
     }
   };
   
+  const handlePrint = () => {
+    window.print();
+  };
+  
   return (
     <div 
-      className={`min-h-screen p-6 transition-all duration-500 page-transition`}
+      className={`min-h-screen p-6 transition-all duration-500 page-transition print-container`}
       style={{ 
         backgroundColor: listStyle.backgroundColor,
         fontFamily: listStyle.fontFamily,
@@ -84,35 +90,51 @@ const ViewList = () => {
         <div className="flex justify-between items-center mb-4">
           <Logo size="sm" />
           
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => refreshList()}
-              variant="outline" 
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              style={{
-                backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
-                color: listStyle.accentColor,
-                borderColor: hexToRgba(listStyle.accentColor, 0.2)
-              }}
-            >
-              <RefreshCw size={16} />
-            </Button>
-            
-            <Button 
-              onClick={handleShare}
-              variant="outline" 
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              style={{
-                backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
-                color: listStyle.accentColor,
-                borderColor: hexToRgba(listStyle.accentColor, 0.2)
-              }}
-            >
-              <Share2 size={16} />
-            </Button>
-          </div>
+          {!isPrinting && (
+            <div className="flex gap-2 no-print">
+              <Button 
+                onClick={() => refreshList()}
+                variant="outline" 
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                style={{
+                  backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
+                  color: listStyle.accentColor,
+                  borderColor: hexToRgba(listStyle.accentColor, 0.2)
+                }}
+              >
+                <RefreshCw size={16} />
+              </Button>
+              
+              <Button 
+                onClick={handleShare}
+                variant="outline" 
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                style={{
+                  backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
+                  color: listStyle.accentColor,
+                  borderColor: hexToRgba(listStyle.accentColor, 0.2)
+                }}
+              >
+                <Share2 size={16} />
+              </Button>
+              
+              <Button 
+                onClick={handlePrint}
+                variant="outline" 
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                style={{
+                  backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
+                  color: listStyle.accentColor,
+                  borderColor: hexToRgba(listStyle.accentColor, 0.2)
+                }}
+              >
+                <Printer size={16} />
+              </Button>
+            </div>
+          )}
         </div>
         
         <div className="mb-6">
@@ -139,48 +161,50 @@ const ViewList = () => {
           <p className="mb-6 opacity-80">{listDescription}</p>
         </div>
         
-        <div 
-          className={`flex gap-2 mb-6 p-1 rounded-lg`}
-          style={{
-            backgroundColor: hexToRgba(isLightColor(listStyle.backgroundColor) ? '#000000' : '#ffffff', 0.05)
-          }}
-        >
-          <button
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${filter === 'all' ? 'shadow-sm' : 'opacity-70'}`}
+        {!isPrinting && (
+          <div 
+            className={`flex gap-2 mb-6 p-1 rounded-lg no-print`}
             style={{
-              backgroundColor: filter === 'all' ? 
-                (isLightColor(listStyle.backgroundColor) ? '#ffffff' : hexToRgba('#ffffff', 0.1)) : 
-                'transparent'
+              backgroundColor: hexToRgba(isLightColor(listStyle.backgroundColor) ? '#000000' : '#ffffff', 0.05)
             }}
-            onClick={() => setFilter('all')}
           >
-            Todos
-          </button>
-          
-          <button
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${filter === 'available' ? 'shadow-sm' : 'opacity-70'}`}
-            style={{
-              backgroundColor: filter === 'available' ? 
-                (isLightColor(listStyle.backgroundColor) ? '#ffffff' : hexToRgba('#ffffff', 0.1)) : 
-                'transparent'
-            }}
-            onClick={() => setFilter('available')}
-          >
-            Disponíveis
-          </button>
-          
-          <button
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${filter === 'claimed' ? 'shadow-sm' : 'opacity-70'}`}
-            style={{
-              backgroundColor: filter === 'claimed' ? 
-                (isLightColor(listStyle.backgroundColor) ? '#ffffff' : hexToRgba('#ffffff', 0.1)) : 
-                'transparent'
-            }}
-            onClick={() => setFilter('claimed')}
-          >
-            Reservados
-          </button>
-        </div>
+            <button
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${filter === 'all' ? 'shadow-sm' : 'opacity-70'}`}
+              style={{
+                backgroundColor: filter === 'all' ? 
+                  (isLightColor(listStyle.backgroundColor) ? '#ffffff' : hexToRgba('#ffffff', 0.1)) : 
+                  'transparent'
+              }}
+              onClick={() => setFilter('all')}
+            >
+              Todos
+            </button>
+            
+            <button
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${filter === 'available' ? 'shadow-sm' : 'opacity-70'}`}
+              style={{
+                backgroundColor: filter === 'available' ? 
+                  (isLightColor(listStyle.backgroundColor) ? '#ffffff' : hexToRgba('#ffffff', 0.1)) : 
+                  'transparent'
+              }}
+              onClick={() => setFilter('available')}
+            >
+              Disponíveis
+            </button>
+            
+            <button
+              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all duration-200 ${filter === 'claimed' ? 'shadow-sm' : 'opacity-70'}`}
+              style={{
+                backgroundColor: filter === 'claimed' ? 
+                  (isLightColor(listStyle.backgroundColor) ? '#ffffff' : hexToRgba('#ffffff', 0.1)) : 
+                  'transparent'
+              }}
+              onClick={() => setFilter('claimed')}
+            >
+              Reservados
+            </button>
+          </div>
+        )}
         
         {loading && filteredItems.length === 0 ? (
           <div className="text-center py-12">
@@ -202,6 +226,13 @@ const ViewList = () => {
                 accentColor={listStyle.accentColor}
               />
             ))}
+          </div>
+        )}
+        
+        {isPrinting && (
+          <div className="mt-8 text-center text-xs opacity-70 pt-4 border-t">
+            <p>Lista de Presentes: {listTitle}</p>
+            <p>Gerado por ListaAi - {new Date().toLocaleDateString()}</p>
           </div>
         )}
       </div>
