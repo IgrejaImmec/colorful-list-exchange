@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useUser } from "./UserContext";
 import { api, ExtendedListStyle } from "@/lib/api";
+import { mockListSummaries } from '@/lib/mockData';
 
 export type ListSummary = {
   id: string;
@@ -45,8 +46,15 @@ export const ListsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setError(null);
     
     try {
-      // In a real app, this would fetch from the server
-      // For now, we'll retrieve from localStorage
+      // First, check if we have mock data for this user
+      if (mockListSummaries[user.id]) {
+        // Use mock data
+        setLists(mockListSummaries[user.id]);
+        setLoading(false);
+        return;
+      }
+      
+      // Fall back to localStorage if no mock data
       const storedListsString = localStorage.getItem(`user_lists_${user.id}`);
       let userLists: ListSummary[] = [];
       

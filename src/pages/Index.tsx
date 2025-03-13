@@ -1,16 +1,18 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { ListPlus, LayoutDashboard, UserPlus, LogIn } from 'lucide-react';
+import { ListPlus, LayoutDashboard, UserPlus, LogIn, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/Logo';
+import { mockTemplates } from '@/lib/mockData';
 
 const Index = () => {
   const { isAuthenticated } = useUser();
+  const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 page-transition" style={{ paddingBottom: '5rem' }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 page-transition" style={{ paddingBottom: '5rem' }}>
       <div className="w-full max-w-md">
         <div className="glass-card p-8 mb-8 text-center animate-blur-in">
           <div className="flex justify-center mb-6">
@@ -56,6 +58,45 @@ const Index = () => {
                 </Link>
               </>
             )}
+          </div>
+        </div>
+        
+        <div className="glass-card p-6 mb-8">
+          <h2 className="text-xl font-medium mb-4 text-center">Templates Disponíveis</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {mockTemplates.map((template) => (
+              <div 
+                key={template.id}
+                className="rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-md"
+                onMouseEnter={() => setPreviewTemplate(template.id)}
+                onMouseLeave={() => setPreviewTemplate(null)}
+              >
+                <div className="relative h-24 overflow-hidden">
+                  <img 
+                    src={template.image} 
+                    alt={template.title} 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                    <h3 className="text-white font-medium">{template.title}</h3>
+                  </div>
+                </div>
+                {previewTemplate === template.id && (
+                  <div className="p-2 text-xs bg-white bg-opacity-90 absolute rounded-md shadow-sm z-10">
+                    <p>{template.description}</p>
+                    <p className="mt-1 text-muted-foreground">{template.items.length} itens inclusos</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 text-center">
+            <Link to={isAuthenticated ? "/create" : "/register"}>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Gift size={16} />
+                <span>Comece com um template</span>
+              </Button>
+            </Link>
           </div>
         </div>
         

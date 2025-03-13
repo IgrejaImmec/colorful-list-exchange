@@ -1,6 +1,7 @@
 
 // Mock API service to simulate backend communication
 import { ListItem, ListStyle } from "@/context/ListContext";
+import { mockLists } from "./mockData";
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -18,8 +19,8 @@ interface ListData {
   }
 }
 
-// Initialize the mock database
-const mockDatabase: ListData = {};
+// Initialize the mock database with preloaded data
+const mockDatabase: ListData = { ...mockLists };
 
 // Default list settings
 const defaultListSettings = {
