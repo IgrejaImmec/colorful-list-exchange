@@ -1,14 +1,14 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLists } from '../context/ListsContext';
 
 const PrintMode = () => {
   const { isPrinting } = useLists();
   
-  if (!isPrinting) return null;
-  
-  return (
-    <style jsx global>{`
+  useEffect(() => {
+    // Add print styles when the component mounts
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
       @media print {
         body {
           background-color: white !important;
@@ -28,8 +28,21 @@ const PrintMode = () => {
           margin-bottom: 8px !important;
         }
       }
-    `}</style>
-  );
+    `;
+    
+    if (isPrinting) {
+      document.head.appendChild(styleElement);
+    }
+    
+    // Clean up function to remove the style element when component unmounts
+    return () => {
+      if (document.head.contains(styleElement)) {
+        document.head.removeChild(styleElement);
+      }
+    };
+  }, [isPrinting]);
+  
+  return null; // This component doesn't render anything visible
 };
 
 export default PrintMode;
