@@ -1,16 +1,44 @@
 
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useList } from '../context/ListContext';
 import ListItem from '../components/ListItem';
 import { Button } from '@/components/ui/button';
-import { Share2, Loader2, RefreshCw } from 'lucide-react';
+import { Share2, Loader2, Heart } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import Logo from '@/components/Logo';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const ViewList = () => {
-  const { items, listTitle, listDescription, listImage, listStyle, loading, refreshList, getShareableLink } = useList();
+const SharedList = () => {
+  const { listId } = useParams<{ listId: string }>();
+  const navigate = useNavigate();
+  const { items, listTitle, listDescription, listImage, listStyle, loading, loadListById } = useList();
   const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  
+  useEffect(() => {
+    const loadList = async () => {
+      if (!listId) {
+        navigate('/');
+        return;
+      }
+      
+      const success = await loadListById(listId);
+      setIsLoading(false);
+      
+      if (!success) {
+        toast({
+          title: "Lista não encontrada",
+          description: "A lista que você está procurando não existe ou foi removida.",
+          variant: "destructive"
+        });
+        navigate('/');
+      }
+    };
+    
+    loadList();
+  }, [listId, navigate, loadListById, toast]);
   
   useEffect(() => {
     // Apply custom font if needed
@@ -44,11 +72,11 @@ const ViewList = () => {
         await navigator.share({
           title: listTitle,
           text: `Confira minha lista de presentes: ${listTitle}`,
-          url: getShareableLink(),
+          url: window.location.href,
         });
       } else {
         // Fallback for browsers that don't support the Web Share API
-        navigator.clipboard.writeText(getShareableLink());
+        navigator.clipboard.writeText(window.location.href);
         toast({
           title: "Link copiado!",
           description: "O link foi copiado para sua área de transferência.",
@@ -63,6 +91,17 @@ const ViewList = () => {
       });
     }
   };
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-lg">Carregando lista...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div 
@@ -84,35 +123,20 @@ const ViewList = () => {
         <div className="flex justify-between items-center mb-4">
           <Logo size="sm" />
           
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => refreshList()}
-              variant="outline" 
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              style={{
-                backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
-                color: listStyle.accentColor,
-                borderColor: hexToRgba(listStyle.accentColor, 0.2)
-              }}
-            >
-              <RefreshCw size={16} />
-            </Button>
-            
-            <Button 
-              onClick={handleShare}
-              variant="outline" 
-              size="icon"
-              className="h-9 w-9 rounded-full"
-              style={{
-                backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
-                color: listStyle.accentColor,
-                borderColor: hexToRgba(listStyle.accentColor, 0.2)
-              }}
-            >
-              <Share2 size={16} />
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1"
+            onClick={handleShare}
+            style={{
+              backgroundColor: hexToRgba(listStyle.accentColor, 0.1),
+              color: listStyle.accentColor,
+              borderColor: hexToRgba(listStyle.accentColor, 0.2)
+            }}
+          >
+            <Share2 size={14} />
+            <span>Compartilhar</span>
+          </Button>
         </div>
         
         <div className="mb-6">
@@ -204,6 +228,12 @@ const ViewList = () => {
             ))}
           </div>
         )}
+        
+        <div className="mt-12 pt-6 border-t border-gray-200/30 text-center text-sm opacity-70">
+          <p className="flex items-center justify-center gap-1">
+            Criado com <Heart size={14} className="text-red-500" /> no ListaAi
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -244,4 +274,4 @@ function hexToRgba(hex: string, alpha: number) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-export default ViewList;
+export default SharedList;

@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import CreateList from "./pages/CreateList";
 import CustomizeList from "./pages/CustomizeList";
 import ViewList from "./pages/ViewList";
+import SharedList from "./pages/SharedList";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 
@@ -27,6 +28,7 @@ const App = () => (
               <Route path="/create" element={<CreateList />} />
               <Route path="/customize" element={<CustomizeList />} />
               <Route path="/view" element={<ViewList />} />
+              <Route path="/shared/:listId" element={<SharedList />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

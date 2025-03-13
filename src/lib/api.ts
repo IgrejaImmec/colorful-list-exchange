@@ -5,11 +5,27 @@ import { ListItem, ListStyle } from "@/context/ListContext";
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Mock backend data
-let mockItems: ListItem[] = [];
-let mockListSettings = {
+// Mock database to store multiple lists
+interface ListData {
+  [listId: string]: {
+    items: ListItem[];
+    settings: {
+      title: string;
+      description: string;
+      image: string;
+      style: ExtendedListStyle;
+    }
+  }
+}
+
+// Initialize the mock database
+const mockDatabase: ListData = {};
+
+// Default list settings
+const defaultListSettings = {
   title: 'Minha Lista',
   description: 'Descrição da minha lista',
+  image: '',
   style: {
     backgroundColor: '#ffffff',
     accentColor: '#0078ff',
@@ -34,16 +50,38 @@ export interface ExtendedListStyle extends ListStyle {
 
 const getRandomDelay = () => Math.floor(Math.random() * 300) + 200;
 
+// Ensure a list exists in the database
+const ensureListExists = (listId: string) => {
+  if (!mockDatabase[listId]) {
+    // Create a new list with default settings
+    mockDatabase[listId] = {
+      items: [],
+      settings: {...defaultListSettings}
+    };
+  }
+  return mockDatabase[listId];
+};
+
 export const api = {
-  getItems: async (): Promise<ListItem[]> => {
-    console.log('🔄 Fetching items from mock API...');
+  checkListExists: async (listId: string): Promise<boolean> => {
+    console.log(`🔄 Checking if list ${listId} exists...`);
     await delay(getRandomDelay());
-    console.log('✅ Items fetched successfully!');
-    return [...mockItems];
+    // For mock purposes, we'll create the list if it doesn't exist
+    ensureListExists(listId);
+    console.log(`✅ List ${listId} exists!`);
+    return true;
   },
   
-  addItem: async (name: string, description: string): Promise<ListItem> => {
-    console.log(`🔄 Adding item "${name}" to mock API...`);
+  getItems: async (listId: string): Promise<ListItem[]> => {
+    console.log(`🔄 Fetching items for list ${listId}...`);
+    await delay(getRandomDelay());
+    const list = ensureListExists(listId);
+    console.log('✅ Items fetched successfully!');
+    return [...list.items];
+  },
+  
+  addItem: async (listId: string, name: string, description: string): Promise<ListItem> => {
+    console.log(`🔄 Adding item "${name}" to list ${listId}...`);
     await delay(getRandomDelay());
     
     const newItem: ListItem = {
@@ -53,79 +91,90 @@ export const api = {
       claimed: false
     };
     
-    mockItems.push(newItem);
+    const list = ensureListExists(listId);
+    list.items.push(newItem);
     console.log('✅ Item added successfully!');
     return newItem;
   },
   
-  updateItem: async (id: string, data: Partial<ListItem>): Promise<ListItem> => {
-    console.log(`🔄 Updating item ${id} in mock API...`);
+  updateItem: async (listId: string, id: string, data: Partial<ListItem>): Promise<ListItem> => {
+    console.log(`🔄 Updating item ${id} in list ${listId}...`);
     await delay(getRandomDelay());
     
-    const index = mockItems.findIndex(item => item.id === id);
+    const list = ensureListExists(listId);
+    const index = list.items.findIndex(item => item.id === id);
     if (index === -1) throw new Error('Item not found');
     
-    mockItems[index] = { ...mockItems[index], ...data };
+    list.items[index] = { ...list.items[index], ...data };
     console.log('✅ Item updated successfully!');
-    return mockItems[index];
+    return list.items[index];
   },
   
-  deleteItem: async (id: string): Promise<void> => {
-    console.log(`🔄 Deleting item ${id} from mock API...`);
+  deleteItem: async (listId: string, id: string): Promise<void> => {
+    console.log(`🔄 Deleting item ${id} from list ${listId}...`);
     await delay(getRandomDelay());
     
-    mockItems = mockItems.filter(item => item.id !== id);
+    const list = ensureListExists(listId);
+    list.items = list.items.filter(item => item.id !== id);
     console.log('✅ Item deleted successfully!');
   },
   
-  claimItem: async (id: string, name: string, phone: string): Promise<ListItem> => {
-    console.log(`🔄 Claiming item ${id} in mock API...`);
+  claimItem: async (listId: string, id: string, name: string, phone: string): Promise<ListItem> => {
+    console.log(`🔄 Claiming item ${id} in list ${listId}...`);
     await delay(getRandomDelay());
     
-    const index = mockItems.findIndex(item => item.id === id);
+    const list = ensureListExists(listId);
+    const index = list.items.findIndex(item => item.id === id);
     if (index === -1) throw new Error('Item not found');
     
-    mockItems[index] = { 
-      ...mockItems[index], 
+    list.items[index] = { 
+      ...list.items[index], 
       claimed: true, 
       claimedBy: { name, phone } 
     };
     
     console.log('✅ Item claimed successfully!');
-    return mockItems[index];
+    return list.items[index];
   },
   
-  getListSettings: async (): Promise<{
+  getListSettings: async (listId: string): Promise<{
     title: string;
     description: string;
+    image: string;
     style: ExtendedListStyle;
   }> => {
-    console.log('🔄 Fetching list settings from mock API...');
+    console.log(`🔄 Fetching settings for list ${listId}...`);
     await delay(getRandomDelay());
+    const list = ensureListExists(listId);
     console.log('✅ List settings fetched successfully!');
-    return { ...mockListSettings };
+    return { ...list.settings };
   },
   
-  updateListSettings: async (settings: {
+  updateListSettings: async (listId: string, settings: {
     title?: string;
     description?: string;
+    image?: string;
     style?: Partial<ExtendedListStyle>;
   }): Promise<{
     title: string;
     description: string;
+    image: string;
     style: ExtendedListStyle;
   }> => {
-    console.log('🔄 Updating list settings in mock API...');
+    console.log(`🔄 Updating settings for list ${listId}...`);
     await delay(getRandomDelay());
     
-    if (settings.title) mockListSettings.title = settings.title;
-    if (settings.description) mockListSettings.description = settings.description;
+    const list = ensureListExists(listId);
+    
+    if (settings.title) list.settings.title = settings.title;
+    if (settings.description) list.settings.description = settings.description;
+    if (settings.image !== undefined) list.settings.image = settings.image;
     if (settings.style) {
-      mockListSettings.style = { ...mockListSettings.style, ...settings.style };
+      list.settings.style = { ...list.settings.style, ...settings.style };
     }
     
     console.log('✅ List settings updated successfully!');
-    return { ...mockListSettings };
+    return { ...list.settings };
   }
 };
 
@@ -148,6 +197,7 @@ model List {
   id           String    @id @default(cuid())
   title        String
   description  String?
+  image        String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   items        Item[]

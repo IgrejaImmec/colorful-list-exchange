@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { api, ExtendedListStyle } from '@/lib/api';
 import { useToast } from "@/components/ui/use-toast";
@@ -24,6 +23,8 @@ type ListContextType = {
   items: ListItem[];
   listTitle: string;
   listDescription: string;
+  listImage: string;
+  listId: string;
   listStyle: ExtendedListStyle;
   loading: boolean;
   error: string | null;
@@ -33,9 +34,12 @@ type ListContextType = {
   claimItem: (id: string, name: string, phone: string) => Promise<void>;
   setListTitle: (title: string) => Promise<void>;
   setListDescription: (description: string) => Promise<void>;
+  setListImage: (imageUrl: string) => Promise<void>;
   updateListStyle: (style: Partial<ExtendedListStyle>) => Promise<void>;
   clearList: () => void;
   refreshList: () => Promise<void>;
+  getShareableLink: () => string;
+  loadListById: (id: string) => Promise<boolean>;
 };
 
 const defaultListStyle: ExtendedListStyle = {
@@ -56,6 +60,11 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [items, setItems] = useState<ListItem[]>([]);
   const [listTitle, setListTitleState] = useState<string>('Minha Lista');
   const [listDescription, setListDescriptionState] = useState<string>('Descrição da minha lista');
+  const [listImage, setListImageState] = useState<string>('');
+  const [listId, setListId] = useState<string>(() => {
+    const savedId = localStorage.getItem('listId');
+    return savedId || crypto.randomUUID();
+  });
   const [listStyle, setListStyle] = useState<ExtendedListStyle>(defaultListStyle);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,14 +86,13 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Fetch items from API
-      const fetchedItems = await api.getItems();
+      const fetchedItems = await api.getItems(listId);
       setItems(fetchedItems);
       
-      // Fetch list settings
-      const settings = await api.getListSettings();
+      const settings = await api.getListSettings(listId);
       setListTitleState(settings.title);
       setListDescriptionState(settings.description);
+      setListImageState(settings.image || '');
       setListStyle(settings.style);
     } catch (err) {
       handleError(err, 'Falha ao carregar os dados da lista');
@@ -93,7 +101,29 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Initialize data on mount
+  const loadListById = async (id: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const exists = await api.checkListExists(id);
+      
+      if (!exists) {
+        return false;
+      }
+      
+      setListId(id);
+      
+      await refreshList();
+      return true;
+    } catch (err) {
+      handleError(err, 'Falha ao carregar a lista');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   useEffect(() => {
     if (!initialized) {
       refreshList();
@@ -101,15 +131,16 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [initialized]);
   
-  // Save to local storage when state changes
   useEffect(() => {
     if (initialized) {
       localStorage.setItem('listItems', JSON.stringify(items));
       localStorage.setItem('listTitle', listTitle);
       localStorage.setItem('listDescription', listDescription);
+      localStorage.setItem('listImage', listImage);
+      localStorage.setItem('listId', listId);
       localStorage.setItem('listStyle', JSON.stringify(listStyle));
     }
-  }, [items, listTitle, listDescription, listStyle, initialized]);
+  }, [items, listTitle, listDescription, listImage, listId, listStyle, initialized]);
   
   const addItem = async (name: string, description: string) => {
     setLoading(true);
@@ -176,7 +207,7 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const settings = await api.updateListSettings({ title });
+      const settings = await api.updateListSettings(listId, { title });
       setListTitleState(settings.title);
     } catch (err) {
       handleError(err, 'Falha ao atualizar título da lista');
@@ -190,10 +221,24 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const settings = await api.updateListSettings({ description });
+      const settings = await api.updateListSettings(listId, { description });
       setListDescriptionState(settings.description);
     } catch (err) {
       handleError(err, 'Falha ao atualizar descrição da lista');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const setListImage = async (imageUrl: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const settings = await api.updateListSettings(listId, { image: imageUrl });
+      setListImageState(settings.image || '');
+    } catch (err) {
+      handleError(err, 'Falha ao atualizar imagem da lista');
     } finally {
       setLoading(false);
     }
@@ -204,7 +249,7 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      const settings = await api.updateListSettings({ style });
+      const settings = await api.updateListSettings(listId, { style });
       setListStyle(settings.style);
     } catch (err) {
       handleError(err, 'Falha ao atualizar estilo da lista');
@@ -217,6 +262,8 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
     setListTitleState('Minha Lista');
     setListDescriptionState('Descrição da minha lista');
+    setListImageState('');
+    setListId(crypto.randomUUID());
     setListStyle(defaultListStyle);
     localStorage.clear();
     toast({
@@ -225,12 +272,18 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
   
+  const getShareableLink = () => {
+    return `${window.location.origin}/shared/${listId}`;
+  };
+  
   return (
     <ListContext.Provider
       value={{
         items,
         listTitle,
         listDescription,
+        listImage,
+        listId,
         listStyle,
         loading,
         error,
@@ -240,9 +293,12 @@ export const ListProvider: React.FC<{ children: React.ReactNode }> = ({ children
         claimItem,
         setListTitle,
         setListDescription,
+        setListImage,
         updateListStyle,
         clearList,
-        refreshList
+        refreshList,
+        getShareableLink,
+        loadListById
       }}
     >
       {children}

@@ -2,12 +2,13 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useList } from '../context/ListContext';
-import { ListPlus, Paintbrush, Eye, Trash } from 'lucide-react';
+import { ListPlus, Paintbrush, Eye, Trash, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from "@/components/ui/use-toast";
+import Logo from '@/components/Logo';
 
 const Index = () => {
-  const { items, clearList } = useList();
+  const { items, clearList, getShareableLink } = useList();
   const { toast } = useToast();
   
   const handleClearList = () => {
@@ -20,10 +21,22 @@ const Index = () => {
     }
   };
 
+  const handleShare = () => {
+    navigator.clipboard.writeText(getShareableLink());
+    toast({
+      title: "Link copiado!",
+      description: "O link foi copiado para sua área de transferência.",
+    });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 page-transition" style={{ paddingBottom: '5rem' }}>
       <div className="w-full max-w-md">
         <div className="glass-card p-8 mb-8 text-center animate-blur-in">
+          <div className="flex justify-center mb-6">
+            <Logo size="lg" />
+          </div>
+          
           <h1 className="text-3xl font-bold mb-3 text-gradient">Lista de Presentes</h1>
           <p className="text-muted-foreground mb-8">
             Crie sua lista personalizada e compartilhe com quem desejar
@@ -52,6 +65,15 @@ const Index = () => {
                     <span>Visualizar Lista</span>
                   </Button>
                 </Link>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full btn-secondary gap-2"
+                  onClick={handleShare}
+                >
+                  <Share2 size={18} />
+                  <span>Compartilhar Lista</span>
+                </Button>
                 
                 <Button 
                   variant="ghost" 
