@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -122,8 +121,29 @@ export default {
 				'scale-out': 'scale-out 0.2s ease-out',
 				'blur-in': 'blur-in 0.3s ease-out',
 				'blur-out': 'blur-out 0.2s ease-out'
+			},
+			animationDuration: {
+				'200': '200ms',
+				'300': '300ms',
+				'500': '500ms',
+				'700': '700ms',
+				'1000': '1000ms',
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [
+		require("tailwindcss-animate"),
+		function({ addUtilities, theme }) {
+			const newUtilities = {}
+			const durations = theme('animationDuration')
+			
+			for (const duration in durations) {
+				newUtilities[`.animate-duration-${duration}`] = {
+					'animation-duration': durations[duration]
+				}
+			}
+			
+			addUtilities(newUtilities)
+		}
+	],
 } satisfies Config;
