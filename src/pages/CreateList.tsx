@@ -1,39 +1,56 @@
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useList } from '../context/ListContext';
+import ListItem from '../components/ListItem';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import ListItem from '../components/ListItem';
-import ImageUploader from '../components/ImageUploader';
-import { Plus } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import Logo from '@/components/Logo';
+import ListForm from '@/components/ListForm';
+import ItemForm from '@/components/ItemForm';
 
 const CreateList = () => {
-  const { items, listTitle, listDescription, listImage, addItem, setListTitle, setListDescription, setListImage, getShareableLink } = useList();
-  const [itemName, setItemName] = useState('');
-  const [itemDescription, setItemDescription] = useState('');
+  const { 
+    items, 
+    listTitle, 
+    listDescription, 
+    listImage, 
+    addItem, 
+    setListTitle, 
+    setListDescription, 
+    setListImage, 
+    getShareableLink,
+    loading
+  } = useList();
   const { toast } = useToast();
   
-  const handleAddItem = () => {
-    if (!itemName.trim()) {
-      toast({
-        title: "Nome do item é obrigatório",
-        description: "Por favor, informe um nome para o item.",
-        variant: "destructive"
-      });
-      return;
+  const handleListFormSubmit = (values: { title: string; description: string; image?: string }) => {
+    setListTitle(values.title);
+    setListDescription(values.description || '');
+    if (values.image !== undefined) {
+      setListImage(values.image);
     }
     
-    addItem(itemName.trim(), itemDescription.trim());
-    setItemName('');
-    setItemDescription('');
+    toast({
+      title: "Informações salvas",
+      description: "Os detalhes da lista foram atualizados.",
+    });
+  };
+  
+  const handleItemFormSubmit = (values: { name: string; description: string }) => {
+    addItem(values.name.trim(), values.description?.trim() || '');
     
     toast({
       title: "Item adicionado",
       description: "O item foi adicionado à sua lista.",
+    });
+  };
+
+  const copyShareableLink = () => {
+    navigator.clipboard.writeText(getShareableLink());
+    toast({
+      title: "Link copiado!",
+      description: "O link foi copiado para sua área de transferência.",
     });
   };
   
@@ -45,32 +62,15 @@ const CreateList = () => {
       </div>
       
       <div className="glass-card p-6 mb-8 animate-slide-in">
-        <div className="mb-6">
-          <Label htmlFor="listTitle">Título da Lista</Label>
-          <Input
-            id="listTitle"
-            value={listTitle}
-            onChange={(e) => setListTitle(e.target.value)}
-            className="input-primary mt-1"
-            placeholder="Ex: Lista de Casamento"
-          />
-        </div>
-        
-        <div className="mb-6">
-          <Label htmlFor="listDescription">Descrição</Label>
-          <Textarea
-            id="listDescription"
-            value={listDescription}
-            onChange={(e) => setListDescription(e.target.value)}
-            className="input-primary mt-1 min-h-[100px]"
-            placeholder="Descreva sua lista..."
-          />
-        </div>
-        
-        <ImageUploader 
-          value={listImage}
-          onChange={setListImage}
-          label="Imagem da Lista (opcional)"
+        <ListForm 
+          defaultValues={{
+            title: listTitle,
+            description: listDescription,
+            image: listImage
+          }}
+          onSubmit={handleListFormSubmit}
+          isProcessing={loading}
+          submitButtonText="Salvar Detalhes"
         />
         
         {items.length > 0 && (
@@ -81,13 +81,7 @@ const CreateList = () => {
                 variant="outline"
                 size="sm"
                 className="text-xs"
-                onClick={() => {
-                  navigator.clipboard.writeText(getShareableLink());
-                  toast({
-                    title: "Link copiado!",
-                    description: "O link foi copiado para sua área de transferência.",
-                  });
-                }}
+                onClick={copyShareableLink}
               >
                 Copiar Link
               </Button>
@@ -106,33 +100,7 @@ const CreateList = () => {
       
       <div className="glass-card p-6 mb-8 animate-slide-in">
         <h2 className="text-xl font-medium mb-4">Adicionar Novo Item</h2>
-        
-        <div className="mb-4">
-          <Label htmlFor="itemName">Nome do Item</Label>
-          <Input
-            id="itemName"
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            className="input-primary mt-1"
-            placeholder="Ex: Liquidificador"
-          />
-        </div>
-        
-        <div className="mb-4">
-          <Label htmlFor="itemDescription">Descrição do Item</Label>
-          <Textarea
-            id="itemDescription"
-            value={itemDescription}
-            onChange={(e) => setItemDescription(e.target.value)}
-            className="input-primary mt-1"
-            placeholder="Detalhes adicionais, marca, modelo, cor..."
-          />
-        </div>
-        
-        <Button onClick={handleAddItem} className="w-full btn-primary gap-2">
-          <Plus size={16} />
-          <span>Adicionar Item</span>
-        </Button>
+        <ItemForm onSubmit={handleItemFormSubmit} isProcessing={loading} />
       </div>
       
       {items.length > 0 && (

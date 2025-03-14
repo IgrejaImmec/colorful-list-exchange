@@ -7,19 +7,17 @@ import { useList } from '../context/ListContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { ListPlus, Edit, Trash2, ExternalLink, Printer, RefreshCw, LogOut } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import Logo from '@/components/Logo';
+import CreateListDialog from '@/components/CreateListDialog';
 
 const Dashboard = () => {
   const { user, logout } = useUser();
   const { lists, loading, error, createNewList, deleteList, refreshLists, setPrinting } = useLists();
   const { loadListById } = useList();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newListTitle, setNewListTitle] = useState('');
-  const [newListDescription, setNewListDescription] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -32,15 +30,12 @@ const Dashboard = () => {
     }
   }, [user, navigate]);
 
-  const handleCreateList = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateList = async (title: string, description: string) => {
     setIsProcessing(true);
     
     try {
-      const newListId = await createNewList(newListTitle, newListDescription);
+      const newListId = await createNewList(title, description);
       setIsCreateDialogOpen(false);
-      setNewListTitle('');
-      setNewListDescription('');
       
       // Load this list into the context and redirect to edit
       await loadListById(newListId);
@@ -107,53 +102,17 @@ const Dashboard = () => {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Minhas Listas</h2>
             
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <ListPlus className="w-4 h-4 mr-2" />
-                  Nova Lista
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <form onSubmit={handleCreateList}>
-                  <DialogHeader>
-                    <DialogTitle>Criar Nova Lista</DialogTitle>
-                    <DialogDescription>
-                      Dê um nome e descrição para sua nova lista de presentes.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Título</Label>
-                      <Input
-                        id="title"
-                        placeholder="Ex: Lista de Casamento"
-                        value={newListTitle}
-                        onChange={(e) => setNewListTitle(e.target.value)}
-                        required
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Descrição</Label>
-                      <Input
-                        id="description"
-                        placeholder="Uma breve descrição da sua lista"
-                        value={newListDescription}
-                        onChange={(e) => setNewListDescription(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <DialogFooter>
-                    <Button type="submit" disabled={isProcessing}>
-                      {isProcessing ? 'Criando...' : 'Criar Lista'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <ListPlus className="w-4 h-4 mr-2" />
+              Nova Lista
+            </Button>
+            
+            <CreateListDialog
+              open={isCreateDialogOpen}
+              onOpenChange={setIsCreateDialogOpen}
+              onSubmit={handleCreateList}
+              isProcessing={isProcessing}
+            />
           </div>
           
           {loading ? (
