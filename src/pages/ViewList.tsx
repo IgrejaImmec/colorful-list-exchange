@@ -10,7 +10,7 @@ import Logo from '@/components/Logo';
 
 const ViewList = () => {
   const { items, listTitle, listDescription, listImage, listStyle, loading, refreshList, getShareableLink } = useList();
-  const { isPrinting } = useLists();
+  const { isPrinting, setPrinting } = useLists();
   const [filter, setFilter] = useState<'all' | 'available' | 'claimed'>('all');
   const { toast } = useToast();
   
@@ -67,7 +67,18 @@ const ViewList = () => {
   };
   
   const handlePrint = () => {
-    window.print();
+    // Set printing mode to true before printing
+    setPrinting(true);
+    
+    // Allow state to update before printing
+    setTimeout(() => {
+      window.print();
+      
+      // Reset printing mode after print dialog closes
+      setTimeout(() => {
+        setPrinting(false);
+      }, 500);
+    }, 100);
   };
   
   return (

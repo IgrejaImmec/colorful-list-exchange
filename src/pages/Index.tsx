@@ -67,7 +67,7 @@ const Index = () => {
             {mockTemplates.map((template) => (
               <div 
                 key={template.id}
-                className="rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-md"
+                className="rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-md relative"
                 onMouseEnter={() => setPreviewTemplate(template.id)}
                 onMouseLeave={() => setPreviewTemplate(null)}
               >
@@ -82,7 +82,7 @@ const Index = () => {
                   </div>
                 </div>
                 {previewTemplate === template.id && (
-                  <div className="p-2 text-xs bg-white bg-opacity-90 absolute rounded-md shadow-sm z-10">
+                  <div className="p-2 text-xs bg-white bg-opacity-90 absolute top-full left-0 right-0 rounded-md shadow-sm z-10">
                     <p>{template.description}</p>
                     <p className="mt-1 text-muted-foreground">{template.items.length} itens inclusos</p>
                   </div>

@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useUser } from "./UserContext";
-import { api, ExtendedListStyle } from "@/lib/api";
+import { api } from "@/lib/api";
 import { mockListSummaries } from '@/lib/mockData';
 
 export type ListSummary = {
