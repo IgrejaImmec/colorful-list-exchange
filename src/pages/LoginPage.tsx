@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Database, DatabaseOff } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,7 +24,7 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 const LoginPage = () => {
-  const { login, loading } = useUser();
+  const { login, loading, dbConnected } = useUser();
   const navigate = useNavigate();
 
   const form = useForm<LoginFormValues>({
@@ -55,6 +55,19 @@ const LoginPage = () => {
           <CardDescription>
             Entre com seu email e senha para acessar suas listas
           </CardDescription>
+          <div className="flex items-center gap-2 text-sm mt-2">
+            {dbConnected ? (
+              <>
+                <Database className="h-4 w-4 text-green-500" />
+                <span className="text-green-500">Conectado ao banco de dados</span>
+              </>
+            ) : (
+              <>
+                <DatabaseOff className="h-4 w-4 text-yellow-500" />
+                <span className="text-yellow-500">Modo offline (sem banco de dados)</span>
+              </>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>

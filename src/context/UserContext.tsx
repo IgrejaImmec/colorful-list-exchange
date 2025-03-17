@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
+import { userDb, testConnection } from '../services/dbService';
 
 export type User = {
   id: string;
@@ -17,6 +18,7 @@ type UserContextType = {
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  dbConnected: boolean;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -25,11 +27,25 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [dbConnected, setDbConnected] = useState<boolean>(false);
   const { toast } = useToast();
   
   const isAuthenticated = !!user;
   
   useEffect(() => {
+    // Check database connection
+    testConnection()
+      .then(connected => {
+        setDbConnected(connected);
+        if (!connected) {
+          toast({
+            title: "Erro de conexão com o banco de dados",
+            description: "Não foi possível conectar ao banco de dados. Usando modo offline.",
+            variant: "destructive"
+          });
+        }
+      });
+    
     // Check if user is stored in localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -47,11 +63,38 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!email || !password) {
+        throw new Error('Email e senha são obrigatórios');
+      }
       
-      // Mock successful login (in a real app, this would verify credentials)
-      if (email && password) {
+      if (dbConnected) {
+        // Use database for authentication
+        const dbUser = await userDb.findUserByEmail(email);
+        
+        if (dbUser && dbUser.password === password) { // In a real app, use proper password hashing
+          const user = {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            createdAt: new Date(dbUser.created_at)
+          };
+          
+          setUser(user);
+          localStorage.setItem('user', JSON.stringify(user));
+          
+          toast({
+            title: "Login realizado com sucesso",
+            description: `Bem-vindo de volta, ${user.name}!`,
+          });
+          
+          return true;
+        } else {
+          throw new Error('Email ou senha incorretos');
+        }
+      } else {
+        // Fallback to mock authentication when database is not connected
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const mockUser: User = {
           id: crypto.randomUUID(),
           name: email.split('@')[0], // Simple name from email
@@ -63,13 +106,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user', JSON.stringify(mockUser));
         
         toast({
-          title: "Login realizado com sucesso",
+          title: "Login realizado com sucesso (modo offline)",
           description: `Bem-vindo de volta, ${mockUser.name}!`,
         });
         
         return true;
-      } else {
-        throw new Error('Email e senha são obrigatórios');
       }
     } catch (err: any) {
       setError(err.message || 'Falha ao fazer login');
@@ -89,11 +130,44 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!name || !email || !password) {
+        throw new Error('Todos os campos são obrigatórios');
+      }
       
-      // Mock successful registration
-      if (name && email && password) {
+      if (dbConnected) {
+        // Check if user already exists
+        const existingUser = await userDb.findUserByEmail(email);
+        if (existingUser) {
+          throw new Error('Este email já está em uso');
+        }
+        
+        // Create user in database
+        const newUser = await userDb.createUser(name, email, password);
+        
+        if (newUser) {
+          const user = {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            createdAt: new Date(newUser.created_at)
+          };
+          
+          setUser(user);
+          localStorage.setItem('user', JSON.stringify(user));
+          
+          toast({
+            title: "Cadastro realizado com sucesso",
+            description: `Bem-vindo, ${name}!`,
+          });
+          
+          return true;
+        } else {
+          throw new Error('Erro ao criar usuário');
+        }
+      } else {
+        // Fallback to mock registration when database is not connected
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
         const mockUser: User = {
           id: crypto.randomUUID(),
           name,
@@ -105,13 +179,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('user', JSON.stringify(mockUser));
         
         toast({
-          title: "Cadastro realizado com sucesso",
+          title: "Cadastro realizado com sucesso (modo offline)",
           description: `Bem-vindo, ${name}!`,
         });
         
         return true;
-      } else {
-        throw new Error('Todos os campos são obrigatórios');
       }
     } catch (err: any) {
       setError(err.message || 'Falha ao criar conta');
@@ -144,7 +216,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
-        isAuthenticated
+        isAuthenticated,
+        dbConnected
       }}
     >
       {children}
