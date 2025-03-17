@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Database, DatabaseOff } from 'lucide-react';
+import { Loader2, Database, Ban } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -63,7 +62,7 @@ const LoginPage = () => {
               </>
             ) : (
               <>
-                <DatabaseOff className="h-4 w-4 text-yellow-500" />
+                <Ban className="h-4 w-4 text-yellow-500" />
                 <span className="text-yellow-500">Modo offline (sem banco de dados)</span>
               </>
             )}
