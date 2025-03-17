@@ -1,60 +1,46 @@
 
-import mysql from 'mysql2/promise';
+// Mock database service for client-side use
+// In a real application, database operations would be performed on a server
 
-// Database connection configuration
-const dbConfig = {
-  host: 'localhost', // This might need to be updated to the actual host
-  user: 'QuedSoft',
-  password: 'Sdwpyt*p1',
-  database: 'BankData'
-};
-
-// Create a connection pool
-const pool = mysql.createPool(dbConfig);
+// Check if we're running in a browser environment
+const isBrowser = typeof window !== 'undefined';
 
 // Test the database connection
 const testConnection = async (): Promise<boolean> => {
-  try {
-    const connection = await pool.getConnection();
-    console.log('Database connection successful');
-    connection.release();
-    return true;
-  } catch (error) {
-    console.error('Database connection failed:', error);
+  // In browser environments, we'll always return false
+  if (isBrowser) {
+    console.log('Running in browser environment - database connections not supported');
     return false;
   }
+  
+  return false; // Always return false in this client-side implementation
 };
 
-// User-related database operations
+// Mock user database operations
 const userDb = {
-  // Find a user by email
+  // Find a user by email (mock implementation)
   findUserByEmail: async (email: string) => {
-    try {
-      const [rows] = await pool.execute(
-        'SELECT * FROM users WHERE email = ?',
-        [email]
-      );
-      return (rows as any[])[0] || null;
-    } catch (error) {
-      console.error('Error finding user by email:', error);
-      throw error;
+    if (isBrowser) {
+      console.log('Mock DB: findUserByEmail called with:', email);
+      return null;
     }
+    return null;
   },
   
-  // Create a new user
+  // Create a new user (mock implementation)
   createUser: async (name: string, email: string, password: string) => {
-    try {
-      const [result] = await pool.execute(
-        'INSERT INTO users (id, name, email, password, created_at) VALUES (?, ?, ?, ?, ?)',
-        [crypto.randomUUID(), name, email, password, new Date()]
-      );
-      
-      // Get the created user
-      return userDb.findUserByEmail(email);
-    } catch (error) {
-      console.error('Error creating user:', error);
-      throw error;
+    if (isBrowser) {
+      console.log('Mock DB: createUser called with:', { name, email });
+      // Return a mock user
+      return {
+        id: crypto.randomUUID(),
+        name,
+        email,
+        password,
+        created_at: new Date()
+      };
     }
+    return null;
   }
 };
 

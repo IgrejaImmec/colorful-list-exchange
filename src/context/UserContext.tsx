@@ -34,17 +34,20 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   useEffect(() => {
     // Check database connection
-    testConnection()
-      .then(connected => {
+    const checkDbConnection = async () => {
+      try {
+        const connected = await testConnection();
         setDbConnected(connected);
         if (!connected) {
-          toast({
-            title: "Erro de conexão com o banco de dados",
-            description: "Não foi possível conectar ao banco de dados. Usando modo offline.",
-            variant: "destructive"
-          });
+          console.log("Database connection not available, using offline mode");
         }
-      });
+      } catch (error) {
+        console.error("Error checking database connection:", error);
+        setDbConnected(false);
+      }
+    };
+    
+    checkDbConnection();
     
     // Check if user is stored in localStorage
     const storedUser = localStorage.getItem('user');
@@ -67,51 +70,25 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Email e senha são obrigatórios');
       }
       
-      if (dbConnected) {
-        // Use database for authentication
-        const dbUser = await userDb.findUserByEmail(email);
-        
-        if (dbUser && dbUser.password === password) { // In a real app, use proper password hashing
-          const user = {
-            id: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
-            createdAt: new Date(dbUser.created_at)
-          };
-          
-          setUser(user);
-          localStorage.setItem('user', JSON.stringify(user));
-          
-          toast({
-            title: "Login realizado com sucesso",
-            description: `Bem-vindo de volta, ${user.name}!`,
-          });
-          
-          return true;
-        } else {
-          throw new Error('Email ou senha incorretos');
-        }
-      } else {
-        // Fallback to mock authentication when database is not connected
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockUser: User = {
-          id: crypto.randomUUID(),
-          name: email.split('@')[0], // Simple name from email
-          email,
-          createdAt: new Date(),
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        
-        toast({
-          title: "Login realizado com sucesso (modo offline)",
-          description: `Bem-vindo de volta, ${mockUser.name}!`,
-        });
-        
-        return true;
-      }
+      // Always use mock authentication since we're in a browser environment
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockUser: User = {
+        id: crypto.randomUUID(),
+        name: email.split('@')[0], // Simple name from email
+        email,
+        createdAt: new Date(),
+      };
+      
+      setUser(mockUser);
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      
+      toast({
+        title: "Login realizado com sucesso (modo offline)",
+        description: `Bem-vindo de volta, ${mockUser.name}!`,
+      });
+      
+      return true;
     } catch (err: any) {
       setError(err.message || 'Falha ao fazer login');
       toast({
@@ -134,57 +111,25 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Todos os campos são obrigatórios');
       }
       
-      if (dbConnected) {
-        // Check if user already exists
-        const existingUser = await userDb.findUserByEmail(email);
-        if (existingUser) {
-          throw new Error('Este email já está em uso');
-        }
-        
-        // Create user in database
-        const newUser = await userDb.createUser(name, email, password);
-        
-        if (newUser) {
-          const user = {
-            id: newUser.id,
-            name: newUser.name,
-            email: newUser.email,
-            createdAt: new Date(newUser.created_at)
-          };
-          
-          setUser(user);
-          localStorage.setItem('user', JSON.stringify(user));
-          
-          toast({
-            title: "Cadastro realizado com sucesso",
-            description: `Bem-vindo, ${name}!`,
-          });
-          
-          return true;
-        } else {
-          throw new Error('Erro ao criar usuário');
-        }
-      } else {
-        // Fallback to mock registration when database is not connected
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const mockUser: User = {
-          id: crypto.randomUUID(),
-          name,
-          email,
-          createdAt: new Date(),
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        
-        toast({
-          title: "Cadastro realizado com sucesso (modo offline)",
-          description: `Bem-vindo, ${name}!`,
-        });
-        
-        return true;
-      }
+      // Always use mock registration since we're in a browser environment
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockUser: User = {
+        id: crypto.randomUUID(),
+        name,
+        email,
+        createdAt: new Date(),
+      };
+      
+      setUser(mockUser);
+      localStorage.setItem('user', JSON.stringify(mockUser));
+      
+      toast({
+        title: "Cadastro realizado com sucesso (modo offline)",
+        description: `Bem-vindo, ${name}!`,
+      });
+      
+      return true;
     } catch (err: any) {
       setError(err.message || 'Falha ao criar conta');
       toast({
