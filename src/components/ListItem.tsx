@@ -2,11 +2,9 @@
 import React, { useState } from 'react';
 import { useList, ListItem as ListItemType } from '../context/ListContext';
 import { Trash2, Check, Gift, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from "@/components/ui/use-toast";
+import PaymentModal from './PaymentModal';
 
 interface ListItemProps {
   item: ListItemType;
@@ -24,30 +22,8 @@ const ListItem: React.FC<ListItemProps> = ({
   accentColor
 }) => {
   const { removeItem, claimItem, loading } = useList();
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const { toast } = useToast();
-  
-  const handleClaim = () => {
-    if (!name || !phone) {
-      toast({
-        title: "Informações incompletas",
-        description: "Por favor, preencha seu nome e telefone.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    claimItem(item.id, name, phone)
-      .then(() => {
-        toast({
-          title: "Item reservado com sucesso!",
-          description: "Obrigado por sua contribuição.",
-        });
-        setOpen(false);
-      });
-  };
   
   const handleRemove = () => {
     removeItem(item.id)
@@ -55,6 +31,16 @@ const ListItem: React.FC<ListItemProps> = ({
         toast({
           title: "Item removido",
           description: "O item foi removido da sua lista.",
+        });
+      });
+  };
+  
+  const handleClaim = async (name: string, phone: string) => {
+    return claimItem(item.id, name, phone)
+      .then(() => {
+        toast({
+          title: "Item reservado com sucesso!",
+          description: "Obrigado por sua contribuição.",
         });
       });
   };
@@ -88,7 +74,7 @@ const ListItem: React.FC<ListItemProps> = ({
           
           {viewMode && !item.claimed && (
             <button 
-              onClick={() => setOpen(true)}
+              onClick={() => setPaymentModalOpen(true)}
               className="p-2 transition-colors duration-200"
               style={{ color: accentColor || '#0078ff' }}
               aria-label="Reservar item"
@@ -100,52 +86,13 @@ const ListItem: React.FC<ListItemProps> = ({
         </div>
       </div>
       
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[425px] animate-scale-in">
-          <DialogHeader>
-            <DialogTitle>Reservar Item</DialogTitle>
-            <DialogDescription>
-              Preencha seus dados para reservar "{item.name}"
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Seu nome</Label>
-              <Input 
-                id="name" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                placeholder="Digite seu nome completo"
-                className="input-primary"
-              />
-            </div>
-            
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Seu telefone</Label>
-              <Input 
-                id="phone" 
-                value={phone} 
-                onChange={(e) => setPhone(e.target.value)} 
-                placeholder="(00) 00000-0000"
-                className="input-primary"
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button 
-              onClick={handleClaim} 
-              disabled={loading}
-              style={{ backgroundColor: accentColor }}
-            >
-              {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-              Confirmar Reserva
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PaymentModal
+        open={paymentModalOpen}
+        onOpenChange={setPaymentModalOpen}
+        item={item}
+        onConfirm={handleClaim}
+        accentColor={accentColor}
+      />
     </div>
   );
 };
