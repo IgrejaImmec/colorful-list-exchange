@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
-import { userDb, testConnection } from '../services/dbService';
+import { testConnection } from '../services/dbService';
 
 export type User = {
   id: string;
@@ -40,6 +39,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setDbConnected(connected);
         if (!connected) {
           console.log("Database connection not available, using offline mode");
+        } else {
+          console.log("Database connected successfully");
         }
       } catch (error) {
         console.error("Error checking database connection:", error);

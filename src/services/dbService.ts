@@ -1,9 +1,21 @@
 
-// Mock database service for client-side use
-// In a real application, database operations would be performed on a server
+// Database service for connection to MySQL
+// This should ONLY be used in a non-browser environment
+import mysql from 'mysql2/promise';
 
 // Check if we're running in a browser environment
 const isBrowser = typeof window !== 'undefined';
+
+// Database connection configuration
+const dbConfig = {
+  host: 'localhost', // Assuming the database is on localhost
+  user: 'QuedSoft',
+  password: 'Sdwpyt*p1',
+  database: 'BankData'
+};
+
+// Create a pool connection to MySQL
+let pool: mysql.Pool | null = null;
 
 // Test the database connection
 const testConnection = async (): Promise<boolean> => {
@@ -13,32 +25,42 @@ const testConnection = async (): Promise<boolean> => {
     return false;
   }
   
-  return false; // Always return false in this client-side implementation
+  try {
+    // Only create the pool if it doesn't exist and we're not in a browser
+    if (!pool && !isBrowser) {
+      pool = mysql.createPool(dbConfig);
+    }
+    
+    // Test the connection
+    if (pool) {
+      const connection = await pool.getConnection();
+      connection.release();
+      console.log('Database connection successful');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    return false;
+  }
 };
 
-// Mock user database operations
+// Mock user database operations for client-side
 const userDb = {
-  // Find a user by email (mock implementation)
+  // These are just mock placeholders for the browser environment
   findUserByEmail: async (email: string) => {
     if (isBrowser) {
-      console.log('Mock DB: findUserByEmail called with:', email);
+      console.log('Running in browser - database operations not supported');
       return null;
     }
     return null;
   },
   
-  // Create a new user (mock implementation)
   createUser: async (name: string, email: string, password: string) => {
     if (isBrowser) {
-      console.log('Mock DB: createUser called with:', { name, email });
-      // Return a mock user
-      return {
-        id: crypto.randomUUID(),
-        name,
-        email,
-        password,
-        created_at: new Date()
-      };
+      console.log('Running in browser - database operations not supported');
+      return null;
     }
     return null;
   }
