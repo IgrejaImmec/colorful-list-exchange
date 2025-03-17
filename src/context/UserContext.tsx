@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { testConnection } from '../services/dbService';
@@ -35,6 +36,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check database connection
     const checkDbConnection = async () => {
       try {
+        // In browser environments, this will always return false
         const connected = await testConnection();
         setDbConnected(connected);
         if (!connected) {

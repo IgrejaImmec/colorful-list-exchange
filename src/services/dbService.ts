@@ -1,10 +1,21 @@
 
 // Database service for connection to MySQL
 // This should ONLY be used in a non-browser environment
-import mysql from 'mysql2/promise';
 
 // Check if we're running in a browser environment
 const isBrowser = typeof window !== 'undefined';
+
+// Only import mysql in server environment
+let mysql: any = null;
+if (!isBrowser) {
+  // This import will be skipped in browser environments
+  // Dynamic import to avoid browser errors
+  try {
+    mysql = require('mysql2/promise');
+  } catch (error) {
+    console.error('Failed to import mysql2/promise:', error);
+  }
+}
 
 // Database connection configuration
 const dbConfig = {
@@ -15,7 +26,7 @@ const dbConfig = {
 };
 
 // Create a pool connection to MySQL
-let pool: mysql.Pool | null = null;
+let pool: any = null;
 
 // Test the database connection
 const testConnection = async (): Promise<boolean> => {
@@ -27,7 +38,7 @@ const testConnection = async (): Promise<boolean> => {
   
   try {
     // Only create the pool if it doesn't exist and we're not in a browser
-    if (!pool && !isBrowser) {
+    if (!pool && !isBrowser && mysql) {
       pool = mysql.createPool(dbConfig);
     }
     
