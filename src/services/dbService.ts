@@ -19,10 +19,11 @@ if (!isBrowser) {
 
 // Database connection configuration
 const dbConfig = {
-  host: 'localhost', // Assuming the database is on localhost
-  user: 'QuedSoft',
+  host: 'srv1196.hstgr.io', 
+  user: 'u455784928_QuedSoft',
   password: 'Sdwpyt*p1',
-  database: 'BankData'
+  database: 'u455784928_BankData',
+  port: 3306
 };
 
 // Create a pool connection to MySQL
@@ -57,15 +58,27 @@ const testConnection = async (): Promise<boolean> => {
   }
 };
 
-// Mock user database operations for client-side
+// User database operations
 const userDb = {
-  // These are just mock placeholders for the browser environment
   findUserByEmail: async (email: string) => {
     if (isBrowser) {
       console.log('Running in browser - database operations not supported');
       return null;
     }
-    return null;
+    
+    try {
+      if (!pool) await testConnection();
+      
+      const [rows] = await pool.execute(
+        'SELECT * FROM users WHERE email = ?',
+        [email]
+      );
+      
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      console.error('Error finding user by email:', error);
+      return null;
+    }
   },
   
   createUser: async (name: string, email: string, password: string) => {
@@ -73,8 +86,137 @@ const userDb = {
       console.log('Running in browser - database operations not supported');
       return null;
     }
-    return null;
+    
+    try {
+      if (!pool) await testConnection();
+      
+      const [result] = await pool.execute(
+        'INSERT INTO users (name, email, password, created_at) VALUES (?, ?, ?, NOW())',
+        [name, email, password]
+      );
+      
+      return result.insertId ? { id: result.insertId, name, email } : null;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      return null;
+    }
+  },
+  
+  verifyPayment: async (paymentId: string, userId: string) => {
+    if (isBrowser) {
+      console.log('Running in browser - database operations not supported');
+      return false;
+    }
+    
+    try {
+      if (!pool) await testConnection();
+      
+      // First check if payment exists
+      const [payments] = await pool.execute(
+        'SELECT * FROM payments WHERE payment_id = ?',
+        [paymentId]
+      );
+      
+      if (payments.length === 0) {
+        // Create a new payment record
+        await pool.execute(
+          'INSERT INTO payments (payment_id, user_id, status, created_at) VALUES (?, ?, "pending", NOW())',
+          [paymentId, userId]
+        );
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      return false;
+    }
+  },
+  
+  updatePaymentStatus: async (paymentId: string, status: string) => {
+    if (isBrowser) {
+      console.log('Running in browser - database operations not supported');
+      return false;
+    }
+    
+    try {
+      if (!pool) await testConnection();
+      
+      await pool.execute(
+        'UPDATE payments SET status = ?, updated_at = NOW() WHERE payment_id = ?',
+        [status, paymentId]
+      );
+      
+      if (status === 'approved') {
+        // If payment is approved, update user subscription
+        const [payments] = await pool.execute(
+          'SELECT user_id FROM payments WHERE payment_id = ?',
+          [paymentId]
+        );
+        
+        if (payments.length > 0) {
+          const userId = payments[0].user_id;
+          
+          // Update user subscription
+          await pool.execute(
+            'UPDATE users SET has_subscription = 1, subscription_expiry = DATE_ADD(NOW(), INTERVAL 30 DAY) WHERE id = ?',
+            [userId]
+          );
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      return false;
+    }
   }
 };
 
-export { testConnection, userDb };
+// Payment database operations
+const paymentDb = {
+  recordPayment: async (paymentData: any) => {
+    if (isBrowser) {
+      console.log('Running in browser - database operations not supported');
+      return null;
+    }
+    
+    try {
+      if (!pool) await testConnection();
+      
+      const { paymentId, userId, amount, description, status } = paymentData;
+      
+      const [result] = await pool.execute(
+        'INSERT INTO payments (payment_id, user_id, amount, description, status, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [paymentId, userId, amount, description, status]
+      );
+      
+      return result.insertId ? { id: result.insertId, ...paymentData } : null;
+    } catch (error) {
+      console.error('Error recording payment:', error);
+      return null;
+    }
+  },
+  
+  getPaymentById: async (paymentId: string) => {
+    if (isBrowser) {
+      console.log('Running in browser - database operations not supported');
+      return null;
+    }
+    
+    try {
+      if (!pool) await testConnection();
+      
+      const [rows] = await pool.execute(
+        'SELECT * FROM payments WHERE payment_id = ?',
+        [paymentId]
+      );
+      
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      console.error('Error getting payment by id:', error);
+      return null;
+    }
+  }
+};
+
+export { testConnection, userDb, paymentDb };

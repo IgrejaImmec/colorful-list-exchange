@@ -1,17 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Clock } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import paymentService, { PaymentResponse, subscriptionOptions, SubscriptionOption } from "@/services/paymentService";
+import paymentService, { PaymentResponse, subscriptionOptions, SubscriptionOption, PaymentStatus } from "@/services/paymentService";
 
 // Form validation schema
 const subscriptionFormSchema = z.object({
@@ -38,6 +38,10 @@ const SubscriptionPaymentDialog: React.FC<SubscriptionPaymentDialogProps> = ({
   const [paymentData, setPaymentData] = useState<PaymentResponse | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionOption | null>(null);
   const [loading, setLoading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null);
+  const [verificationInterval, setVerificationInterval] = useState<number | null>(null);
   const { toast } = useToast();
   
   const form = useForm<SubscriptionFormValues>({
@@ -49,6 +53,37 @@ const SubscriptionPaymentDialog: React.FC<SubscriptionPaymentDialogProps> = ({
       document: ''
     }
   });
+  
+  // Setup payment verification
+  useEffect(() => {
+    if (step === 'payment' && paymentId) {
+      // Start verification right away
+      verifyPayment();
+      
+      // Setup interval to check payment status every 5 seconds
+      const interval = window.setInterval(() => {
+        verifyPayment();
+      }, 5000);
+      
+      setVerificationInterval(interval);
+      
+      // Clear interval on component unmount or when we're no longer in payment step
+      return () => {
+        if (verificationInterval) {
+          clearInterval(verificationInterval);
+        }
+      };
+    }
+  }, [step, paymentId]);
+  
+  // Cleanup interval when dialog closes
+  useEffect(() => {
+    return () => {
+      if (verificationInterval) {
+        clearInterval(verificationInterval);
+      }
+    };
+  }, []);
   
   const handleProceedToPayment = async (values: SubscriptionFormValues) => {
     setLoading(true);
@@ -72,8 +107,9 @@ const SubscriptionPaymentDialog: React.FC<SubscriptionPaymentDialogProps> = ({
         }
       );
       
-      if (response.success) {
+      if (response.success && response.result?.id) {
         setPaymentData(response);
+        setPaymentId(response.result.id);
         setStep('payment');
       } else {
         toast({
@@ -96,35 +132,58 @@ const SubscriptionPaymentDialog: React.FC<SubscriptionPaymentDialogProps> = ({
     }
   };
   
-  const handleFinalize = async () => {
-    setLoading(true);
+  const verifyPayment = async () => {
+    if (!paymentId || verifying) return;
+    
+    setVerifying(true);
     
     try {
-      // In a real implementation, we would verify the payment status with the backend
-      // For now, we'll simulate a successful payment
-      setStep('success');
+      const status = await paymentService.validatePayment(paymentId);
+      setPaymentStatus(status);
       
-      // Trigger success callback
-      onSuccess();
-      
-      // Close modal after 2 seconds on success
-      setTimeout(() => {
-        onOpenChange(false);
-        setStep('form');
-        form.reset();
-      }, 2000);
+      // If payment is approved, proceed to success
+      if (status.approved) {
+        if (verificationInterval) {
+          clearInterval(verificationInterval);
+          setVerificationInterval(null);
+        }
+        setStep('success');
+        
+        // Trigger success callback after a short delay
+        setTimeout(() => {
+          onSuccess();
+        }, 2000);
+      }
     } catch (error) {
-      console.error('Error finalizing subscription:', error);
-      setStep('error');
+      console.error('Error verifying payment:', error);
     } finally {
-      setLoading(false);
+      setVerifying(false);
+    }
+  };
+  
+  const handleManualVerification = async () => {
+    await verifyPayment();
+    
+    if (paymentStatus && !paymentStatus.approved) {
+      toast({
+        title: "Verificação de pagamento",
+        description: paymentStatus.message,
+        variant: paymentStatus.status === 'error' ? "destructive" : "default"
+      });
     }
   };
   
   const resetModal = () => {
+    if (verificationInterval) {
+      clearInterval(verificationInterval);
+      setVerificationInterval(null);
+    }
+    
     setStep('form');
     setPaymentData(null);
     setSelectedPlan(null);
+    setPaymentId(null);
+    setPaymentStatus(null);
     form.reset();
   };
   
@@ -266,30 +325,38 @@ const SubscriptionPaymentDialog: React.FC<SubscriptionPaymentDialogProps> = ({
                 />
               )}
               
-              <div className="text-center mt-4 mb-6">
+              <div className="text-center mt-4 mb-2">
                 <p className="text-sm font-medium mb-1">
                   {selectedPlan?.name} - R$ {selectedPlan?.amount.toFixed(2)}
                 </p>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Após efetuar o pagamento, clique em "Finalizar"
+              </div>
+              
+              <div className="flex items-center justify-center space-x-2 my-2 p-2 bg-amber-50 border border-amber-200 rounded-md w-full">
+                <Clock className="h-5 w-5 text-amber-500" />
+                <p className="text-sm text-amber-700">
+                  {paymentStatus ? paymentStatus.message : "Aguardando confirmação do pagamento..."}
                 </p>
               </div>
+              
+              <p className="text-xs text-muted-foreground mt-2">
+                A verificação é automática, mas você também pode verificar manualmente.
+              </p>
             </div>
             
             <DialogFooter>
               <Button 
                 variant="outline" 
                 onClick={resetModal} 
-                disabled={loading}
+                disabled={verifying}
               >
-                Voltar
+                Cancelar
               </Button>
               <Button 
-                onClick={handleFinalize} 
-                disabled={loading}
+                onClick={handleManualVerification} 
+                disabled={verifying}
               >
-                {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
-                Finalizar
+                {verifying ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                Verificar Pagamento
               </Button>
             </DialogFooter>
           </>
@@ -298,9 +365,9 @@ const SubscriptionPaymentDialog: React.FC<SubscriptionPaymentDialogProps> = ({
         {step === 'success' && (
           <div className="py-6 text-center">
             <CheckCircle className="w-16 h-16 mx-auto mb-4 text-green-500" />
-            <DialogTitle className="mb-2">Assinatura confirmada!</DialogTitle>
+            <DialogTitle className="mb-2">Pagamento confirmado!</DialogTitle>
             <DialogDescription>
-              Sua assinatura foi ativada com sucesso.
+              Sua assinatura foi ativada com sucesso. Você já pode utilizar todas as funcionalidades.
             </DialogDescription>
           </div>
         )}

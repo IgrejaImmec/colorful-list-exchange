@@ -21,7 +21,7 @@ export interface PaymentRequest {
     address?: {
       zip_code: string;
       street_name: string;
-      street_number: string; // Changed from number to string to match usage
+      street_number: string;
       neighborhood?: string;
       city?: string;
       federal_unit?: string;
@@ -235,7 +235,7 @@ const paymentService = {
         },
         address: {
           street_name: "Rua Exemplo",
-          street_number: "123", // Changed from 123 to "123"
+          street_number: "123",
           zip_code: "12345678"
         }
       }
