@@ -1,5 +1,10 @@
 
 import { useToast } from "@/components/ui/use-toast";
+import axios from "axios";
+
+// API configuration
+const API_URL = 'https://contratoagoraback.onrender.com';
+const MERCADO_PAGO_TOKEN = 'APP_USR-957794627794363-082308-6665c8bdcf1ceeeb07e1c6a3430fb855-198355928';
 
 // Types for payment requests
 export interface PaymentRequest {
@@ -17,9 +22,9 @@ export interface PaymentRequest {
       zip_code: string;
       street_name: string;
       street_number: string;
-      neighborhood: string;
-      city: string;
-      federal_unit: string;
+      neighborhood?: string;
+      city?: string;
+      federal_unit?: string;
     }
   }
 }
@@ -72,26 +77,38 @@ const paymentService = {
   // Create PIX payment
   createPixPayment: async (paymentData: PaymentRequest): Promise<PaymentResponse> => {
     try {
-      const response = await fetch('/api/payments/pix', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(paymentData),
-      });
+      const response = await axios.post(`${API_URL}/server/pix`, paymentData);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro ao processar pagamento');
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Erro ao processar pagamento');
       }
       
-      return await response.json();
+      return response.data;
     } catch (error) {
       console.error('Payment error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Erro desconhecido no pagamento'
       };
+    }
+  },
+  
+  // Verify payment status
+  verifyPayment: async (paymentId: string): Promise<{ status: string; approved: boolean }> => {
+    try {
+      const response = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: {
+          Authorization: `Bearer ${MERCADO_PAGO_TOKEN}`
+        }
+      });
+      
+      return {
+        status: response.data.status,
+        approved: response.data.status === 'approved'
+      };
+    } catch (error) {
+      console.error('Payment verification error:', error);
+      throw new Error('Falha ao verificar o status do pagamento');
     }
   },
   
@@ -112,6 +129,11 @@ const paymentService = {
         identification: {
           type: 'CPF',
           number: userData.document
+        },
+        address: {
+          street_name: "Rua Exemplo",
+          street_number: 123,
+          zip_code: "12345678"
         }
       }
     };

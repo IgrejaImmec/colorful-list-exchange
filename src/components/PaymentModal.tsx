@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -40,6 +40,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
 }) => {
   const [step, setStep] = useState<'form' | 'payment' | 'success' | 'error'>('form');
   const [paymentData, setPaymentData] = useState<PaymentResponse | null>(null);
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   
@@ -68,6 +71,11 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           identification: {
             type: 'CPF',
             number: values.document
+          },
+          address: {
+            street_name: "Rua Exemplo",
+            street_number: 123,
+            zip_code: "12345678"
           }
         }
       };
@@ -76,6 +84,10 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       
       if (response.success) {
         setPaymentData(response);
+        if (response.result?.id) {
+          setPaymentId(response.result.id);
+          setPaymentStatus(response.result.status);
+        }
         setStep('payment');
       } else {
         toast({
@@ -95,6 +107,46 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
       setStep('error');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const handleVerifyPayment = async () => {
+    if (!paymentId) {
+      toast({
+        title: "Erro na verificação",
+        description: "ID do pagamento não encontrado",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setVerifying(true);
+    
+    try {
+      const result = await paymentService.verifyPayment(paymentId);
+      setPaymentStatus(result.status);
+      
+      if (result.approved) {
+        toast({
+          title: "Pagamento aprovado!",
+          description: "Seu pagamento foi confirmado com sucesso."
+        });
+        await handleFinalize();
+      } else {
+        toast({
+          title: "Pagamento pendente",
+          description: "Seu pagamento ainda está sendo processado. Tente verificar novamente em alguns instantes.",
+        });
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      toast({
+        title: "Erro na verificação",
+        description: "Não foi possível verificar o status do pagamento",
+        variant: "destructive"
+      });
+    } finally {
+      setVerifying(false);
     }
   };
   
@@ -128,6 +180,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const resetModal = () => {
     setStep('form');
     setPaymentData(null);
+    setPaymentId(null);
+    setPaymentStatus(null);
     form.reset();
   };
   
@@ -260,23 +314,50 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
               
               <div className="text-center mt-4 mb-6">
                 <p className="text-sm text-muted-foreground mb-2">
-                  Após efetuar o pagamento, clique em "Finalizar Reserva"
+                  Após efetuar o pagamento, clique em "Verificar Pagamento"
                 </p>
+                {paymentId && paymentStatus && (
+                  <p className="text-xs text-muted-foreground">
+                    Status atual: <span className="font-medium">{paymentStatus}</span>
+                  </p>
+                )}
               </div>
+              
+              {paymentData.point_of_interaction?.transaction_data?.ticket_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mb-4"
+                  onClick={() => window.open(paymentData.point_of_interaction?.transaction_data?.ticket_url, '_blank')}
+                >
+                  Abrir Página do PIX
+                </Button>
+              )}
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
               <Button 
                 variant="outline" 
                 onClick={resetModal} 
-                disabled={loading}
+                disabled={loading || verifying}
+                className="sm:flex-1"
               >
                 Voltar
               </Button>
               <Button 
+                onClick={handleVerifyPayment} 
+                disabled={loading || verifying}
+                className="sm:flex-1"
+                variant="outline"
+              >
+                {verifying ? <Loader2 size={16} className="animate-spin mr-2" /> : <RefreshCw size={16} className="mr-2" />}
+                Verificar Pagamento
+              </Button>
+              <Button 
                 onClick={handleFinalize} 
-                disabled={loading}
+                disabled={loading || verifying}
                 style={{ backgroundColor: accentColor }}
+                className="sm:flex-1"
               >
                 {loading ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
                 Finalizar Reserva
