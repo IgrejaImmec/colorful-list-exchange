@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
           },
           address: {
             street_name: "Rua Exemplo",
-            street_number: 123,
+            street_number: "123",
             zip_code: "12345678"
           }
         }

@@ -31,6 +31,16 @@ const ListItem: React.FC<ListItemProps> = ({
   const { toast } = useToast();
   
   const handleRemove = () => {
+    // Only remove items that haven't been claimed
+    if (item.claimed) {
+      toast({
+        title: "Não é possível remover",
+        description: "Itens já reservados não podem ser removidos.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     removeItem(item.id)
       .then(() => {
         toast({
