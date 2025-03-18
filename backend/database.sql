@@ -35,9 +35,10 @@ CREATE TABLE IF NOT EXISTS lists (
   user_id INT,
   title VARCHAR(255) NOT NULL,
   description TEXT,
+  image VARCHAR(255),
   created_at DATETIME,
   updated_at DATETIME,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Create items table
@@ -51,17 +52,23 @@ CREATE TABLE IF NOT EXISTS items (
   claimed_by_phone VARCHAR(50),
   created_at DATETIME,
   updated_at DATETIME,
-  FOREIGN KEY (list_id) REFERENCES lists(id)
+  FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE
 );
 
 -- Create list styles table
 CREATE TABLE IF NOT EXISTS list_styles (
   id INT AUTO_INCREMENT PRIMARY KEY,
   list_id INT,
-  background_color VARCHAR(50),
-  text_color VARCHAR(50),
+  background_color VARCHAR(50) DEFAULT '#ffffff',
+  accent_color VARCHAR(50) DEFAULT '#0078ff',
+  font_family VARCHAR(255) DEFAULT 'Inter, sans-serif',
+  border_radius VARCHAR(50) DEFAULT 'rounded-2xl',
+  item_spacing VARCHAR(10) DEFAULT '4',
+  background_image VARCHAR(255),
   background_pattern VARCHAR(255),
+  title_color VARCHAR(50),
+  text_color VARCHAR(50),
   created_at DATETIME,
   updated_at DATETIME,
-  FOREIGN KEY (list_id) REFERENCES lists(id)
+  FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE
 );

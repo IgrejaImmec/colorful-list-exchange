@@ -3,7 +3,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { useUser } from "./UserContext";
 import { api } from "@/lib/api";
-import { mockListSummaries } from '@/lib/mockData';
 
 export type ListSummary = {
   id: string;
@@ -46,45 +45,8 @@ export const ListsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setError(null);
     
     try {
-      // First, check if we have mock data for this user
-      if (mockListSummaries[user.id]) {
-        // Use mock data
-        setLists(mockListSummaries[user.id]);
-        setLoading(false);
-        return;
-      }
-      
-      // Fall back to localStorage if no mock data
-      const storedListsString = localStorage.getItem(`user_lists_${user.id}`);
-      let userLists: ListSummary[] = [];
-      
-      if (storedListsString) {
-        try {
-          userLists = JSON.parse(storedListsString);
-        } catch (err) {
-          console.error('Error parsing stored lists:', err);
-          localStorage.removeItem(`user_lists_${user.id}`);
-        }
-      }
-      
-      // Update each list with current item counts
-      const updatedLists = await Promise.all(
-        userLists.map(async (list) => {
-          try {
-            const items = await api.getItems(list.id);
-            return {
-              ...list,
-              itemCount: items.length,
-              claimedCount: items.filter(item => item.claimed).length
-            };
-          } catch (err) {
-            console.error(`Error fetching items for list ${list.id}:`, err);
-            return list;
-          }
-        })
-      );
-      
-      setLists(updatedLists);
+      const userLists = await api.getUserLists(user.id);
+      setLists(userLists);
     } catch (err: any) {
       setError(err.message || 'Falha ao carregar listas');
       toast({
@@ -111,36 +73,15 @@ export const ListsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setError(null);
     
     try {
-      // Create a new list ID
-      const newListId = crypto.randomUUID();
-      
-      // Add the list to our local store
-      const newList: ListSummary = {
-        id: newListId,
-        title,
-        description,
-        itemCount: 0,
-        claimedCount: 0,
-        createdAt: new Date(),
-      };
-      
-      // Update our local state
-      const updatedLists = [...lists, newList];
-      setLists(updatedLists);
-      
-      // Store in localStorage
-      localStorage.setItem(`user_lists_${user.id}`, JSON.stringify(updatedLists));
-      
-      // Initialize the list in our mock API
-      await api.updateListSettings(newListId, { 
-        title, 
-        description
-      });
+      const newListId = await api.createList(user.id, title, description);
       
       toast({
         title: "Lista criada com sucesso",
         description: "Sua nova lista foi criada."
       });
+      
+      // Refresh lists to include the new one
+      await refreshLists();
       
       return newListId;
     } catch (err: any) {
@@ -165,12 +106,10 @@ export const ListsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setError(null);
     
     try {
-      // Remove from our local state
-      const updatedLists = lists.filter(list => list.id !== listId);
-      setLists(updatedLists);
+      await api.deleteList(listId);
       
-      // Update localStorage
-      localStorage.setItem(`user_lists_${user.id}`, JSON.stringify(updatedLists));
+      // Update the local state to remove the deleted list
+      setLists(lists.filter(list => list.id !== listId));
       
       toast({
         title: "Lista excluída",

@@ -1,15 +1,13 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { ListPlus, LayoutDashboard, UserPlus, LogIn, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/Logo';
-import { mockTemplates } from '@/lib/mockData';
 
 const Index = () => {
   const { isAuthenticated } = useUser();
-  const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 page-transition" style={{ paddingBottom: '5rem' }}>
@@ -62,39 +60,52 @@ const Index = () => {
         </div>
         
         <div className="glass-card p-6 mb-8">
-          <h2 className="text-xl font-medium mb-4 text-center">Templates Disponíveis</h2>
+          <h2 className="text-xl font-medium mb-4 text-center">Tipos de Lista</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {mockTemplates.map((template) => (
-              <div 
-                key={template.id}
-                className="rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-md relative"
-                onMouseEnter={() => setPreviewTemplate(template.id)}
-                onMouseLeave={() => setPreviewTemplate(null)}
-              >
-                <div className="relative h-24 overflow-hidden">
-                  <img 
-                    src={template.image} 
-                    alt={template.title} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                    <h3 className="text-white font-medium">{template.title}</h3>
-                  </div>
+            <div className="rounded-lg overflow-hidden shadow-sm">
+              <div className="relative h-24 overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1622547748225-3fc4abd2cca0?q=80&w=1932&auto=format&fit=crop" 
+                  alt="Lista de Casamento" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                  <h3 className="text-white font-medium">Casamento</h3>
                 </div>
-                {previewTemplate === template.id && (
-                  <div className="p-2 text-xs bg-white bg-opacity-90 absolute top-full left-0 right-0 rounded-md shadow-sm z-10">
-                    <p>{template.description}</p>
-                    <p className="mt-1 text-muted-foreground">{template.items.length} itens inclusos</p>
-                  </div>
-                )}
               </div>
-            ))}
+            </div>
+            
+            <div className="rounded-lg overflow-hidden shadow-sm">
+              <div className="relative h-24 overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1519689680058-324335c77eba?q=80&w=1770&auto=format&fit=crop" 
+                  alt="Chá de Bebê" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                  <h3 className="text-white font-medium">Chá de Bebê</h3>
+                </div>
+              </div>
+            </div>
+            
+            <div className="rounded-lg overflow-hidden shadow-sm">
+              <div className="relative h-24 overflow-hidden">
+                <img 
+                  src="https://images.unsplash.com/photo-1530103862676-de8c9debad1d?q=80&w=2070&auto=format&fit=crop" 
+                  alt="Aniversário" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                  <h3 className="text-white font-medium">Aniversário</h3>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="mt-4 text-center">
             <Link to={isAuthenticated ? "/create" : "/register"}>
               <Button variant="outline" size="sm" className="gap-2">
                 <Gift size={16} />
-                <span>Comece com um template</span>
+                <span>Criar sua lista personalizada</span>
               </Button>
             </Link>
           </div>

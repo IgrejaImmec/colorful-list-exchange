@@ -1,46 +1,21 @@
 
-// Mock API service to simulate backend communication
-import { ListItem, ListStyle } from "@/context/ListContext";
-import { mockLists } from "./mockData";
+// API service to communicate with the backend server
+import { ListItem } from "@/context/ListContext";
+import axios from "axios";
 
-// Simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Create an axios instance with default config
+const apiClient = axios.create({
+  baseURL: "/server", // Will connect to our Express server
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
 
-// Mock database to store multiple lists
-interface ListData {
-  [listId: string]: {
-    items: ListItem[];
-    settings: {
-      title: string;
-      description: string;
-      image: string;
-      style: ExtendedListStyle;
-    }
-  }
-}
-
-// Initialize the mock database with preloaded data
-const mockDatabase: ListData = { ...mockLists };
-
-// Default list settings
-const defaultListSettings = {
-  title: 'Minha Lista',
-  description: 'Descrição da minha lista',
-  image: '',
-  style: {
-    backgroundColor: '#ffffff',
-    accentColor: '#0078ff',
-    fontFamily: 'Inter, sans-serif',
-    borderRadius: 'rounded-2xl',
-    itemSpacing: '4',
-    backgroundImage: '',
-    backgroundPattern: '',
-    titleColor: '',
-    textColor: '',
-  }
-};
-
-export interface ExtendedListStyle extends ListStyle {
+// List style interface
+export interface ExtendedListStyle {
+  backgroundColor: string;
+  accentColor: string;
+  fontFamily: string;
   borderRadius: string;
   itemSpacing: string;
   backgroundImage: string;
@@ -49,93 +24,82 @@ export interface ExtendedListStyle extends ListStyle {
   textColor: string;
 }
 
-const getRandomDelay = () => Math.floor(Math.random() * 300) + 200;
-
-// Ensure a list exists in the database
-const ensureListExists = (listId: string) => {
-  if (!mockDatabase[listId]) {
-    // Create a new list with default settings
-    mockDatabase[listId] = {
-      items: [],
-      settings: {...defaultListSettings}
-    };
-  }
-  return mockDatabase[listId];
-};
-
 export const api = {
   checkListExists: async (listId: string): Promise<boolean> => {
     console.log(`🔄 Checking if list ${listId} exists...`);
-    await delay(getRandomDelay());
-    // For mock purposes, we'll create the list if it doesn't exist
-    ensureListExists(listId);
-    console.log(`✅ List ${listId} exists!`);
-    return true;
+    try {
+      const response = await apiClient.get(`/lists/${listId}/exists`);
+      console.log(`✅ List ${listId} exists!`);
+      return response.data.exists;
+    } catch (error) {
+      console.error(`❌ Error checking if list ${listId} exists:`, error);
+      return false;
+    }
   },
   
   getItems: async (listId: string): Promise<ListItem[]> => {
     console.log(`🔄 Fetching items for list ${listId}...`);
-    await delay(getRandomDelay());
-    const list = ensureListExists(listId);
-    console.log('✅ Items fetched successfully!');
-    return [...list.items];
+    try {
+      const response = await apiClient.get(`/lists/${listId}/items`);
+      console.log('✅ Items fetched successfully!');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching items:', error);
+      return [];
+    }
   },
   
   addItem: async (listId: string, name: string, description: string): Promise<ListItem> => {
     console.log(`🔄 Adding item "${name}" to list ${listId}...`);
-    await delay(getRandomDelay());
-    
-    const newItem: ListItem = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      claimed: false
-    };
-    
-    const list = ensureListExists(listId);
-    list.items.push(newItem);
-    console.log('✅ Item added successfully!');
-    return newItem;
+    try {
+      const response = await apiClient.post(`/lists/${listId}/items`, {
+        name,
+        description
+      });
+      console.log('✅ Item added successfully!');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error adding item:', error);
+      throw error;
+    }
   },
   
   updateItem: async (listId: string, id: string, data: Partial<ListItem>): Promise<ListItem> => {
     console.log(`🔄 Updating item ${id} in list ${listId}...`);
-    await delay(getRandomDelay());
-    
-    const list = ensureListExists(listId);
-    const index = list.items.findIndex(item => item.id === id);
-    if (index === -1) throw new Error('Item not found');
-    
-    list.items[index] = { ...list.items[index], ...data };
-    console.log('✅ Item updated successfully!');
-    return list.items[index];
+    try {
+      const response = await apiClient.put(`/lists/${listId}/items/${id}`, data);
+      console.log('✅ Item updated successfully!');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating item:', error);
+      throw error;
+    }
   },
   
   deleteItem: async (listId: string, id: string): Promise<void> => {
     console.log(`🔄 Deleting item ${id} from list ${listId}...`);
-    await delay(getRandomDelay());
-    
-    const list = ensureListExists(listId);
-    list.items = list.items.filter(item => item.id !== id);
-    console.log('✅ Item deleted successfully!');
+    try {
+      await apiClient.delete(`/lists/${listId}/items/${id}`);
+      console.log('✅ Item deleted successfully!');
+    } catch (error) {
+      console.error('❌ Error deleting item:', error);
+      throw error;
+    }
   },
   
   claimItem: async (listId: string, id: string, name: string, phone: string): Promise<ListItem> => {
     console.log(`🔄 Claiming item ${id} in list ${listId}...`);
-    await delay(getRandomDelay());
-    
-    const list = ensureListExists(listId);
-    const index = list.items.findIndex(item => item.id === id);
-    if (index === -1) throw new Error('Item not found');
-    
-    list.items[index] = { 
-      ...list.items[index], 
-      claimed: true, 
-      claimedBy: { name, phone } 
-    };
-    
-    console.log('✅ Item claimed successfully!');
-    return list.items[index];
+    try {
+      const response = await apiClient.post(`/lists/${listId}/items/${id}/claim`, {
+        name,
+        phone
+      });
+      console.log('✅ Item claimed successfully!');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error claiming item:', error);
+      throw error;
+    }
   },
   
   getListSettings: async (listId: string): Promise<{
@@ -145,10 +109,14 @@ export const api = {
     style: ExtendedListStyle;
   }> => {
     console.log(`🔄 Fetching settings for list ${listId}...`);
-    await delay(getRandomDelay());
-    const list = ensureListExists(listId);
-    console.log('✅ List settings fetched successfully!');
-    return { ...list.settings };
+    try {
+      const response = await apiClient.get(`/lists/${listId}`);
+      console.log('✅ List settings fetched successfully!');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching list settings:', error);
+      throw error;
+    }
   },
   
   updateListSettings: async (listId: string, settings: {
@@ -163,82 +131,52 @@ export const api = {
     style: ExtendedListStyle;
   }> => {
     console.log(`🔄 Updating settings for list ${listId}...`);
-    await delay(getRandomDelay());
-    
-    const list = ensureListExists(listId);
-    
-    if (settings.title) list.settings.title = settings.title;
-    if (settings.description) list.settings.description = settings.description;
-    if (settings.image !== undefined) list.settings.image = settings.image;
-    if (settings.style) {
-      list.settings.style = { ...list.settings.style, ...settings.style };
+    try {
+      const response = await apiClient.put(`/lists/${listId}`, settings);
+      console.log('✅ List settings updated successfully!');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating list settings:', error);
+      throw error;
     }
-    
-    console.log('✅ List settings updated successfully!');
-    return { ...list.settings };
+  },
+
+  getUserLists: async (userId: string): Promise<any[]> => {
+    console.log(`🔄 Fetching lists for user ${userId}...`);
+    try {
+      const response = await apiClient.get(`/users/${userId}/lists`);
+      console.log('✅ User lists fetched successfully!');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching user lists:', error);
+      return [];
+    }
+  },
+
+  createList: async (userId: string, title: string, description: string): Promise<string> => {
+    console.log(`🔄 Creating list for user ${userId}...`);
+    try {
+      const response = await apiClient.post(`/users/${userId}/lists`, {
+        title,
+        description
+      });
+      console.log('✅ List created successfully!');
+      return response.data.id;
+    } catch (error) {
+      console.error('❌ Error creating list:', error);
+      throw error;
+    }
+  },
+
+  deleteList: async (listId: string): Promise<boolean> => {
+    console.log(`🔄 Deleting list ${listId}...`);
+    try {
+      await apiClient.delete(`/lists/${listId}`);
+      console.log('✅ List deleted successfully!');
+      return true;
+    } catch (error) {
+      console.error('❌ Error deleting list:', error);
+      throw error;
+    }
   }
-};
-
-export const getPrismaDbSchema = () => {
-  // Mock PrismaDB schema for documentation purposes
-  return `
-// This is your Prisma schema file for ListaAi,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model List {
-  id           String    @id @default(cuid())
-  title        String
-  description  String?
-  image        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  items        Item[]
-  style        ListStyle?
-}
-
-model Item {
-  id          String    @id @default(cuid())
-  name        String
-  description String?
-  claimed     Boolean   @default(false)
-  claimedBy   ClaimedBy?
-  listId      String
-  list        List      @relation(fields: [listId], references: [id], onDelete: Cascade)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model ClaimedBy {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String
-  itemId    String   @unique
-  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-}
-
-model ListStyle {
-  id               String  @id @default(cuid())
-  backgroundColor  String  @default("#ffffff")
-  accentColor      String  @default("#0078ff")
-  fontFamily       String  @default("Inter, sans-serif")
-  borderRadius     String  @default("rounded-2xl")
-  itemSpacing      String  @default("4")
-  backgroundImage  String? 
-  backgroundPattern String?
-  titleColor       String?
-  textColor        String?
-  listId           String  @unique
-  list             List    @relation(fields: [listId], references: [id], onDelete: Cascade)
-}
-  `;
 };

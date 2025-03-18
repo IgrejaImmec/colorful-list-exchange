@@ -2,12 +2,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { testConnection } from '../services/dbService';
+import axios from 'axios';
 
 export type User = {
   id: string;
   name: string;
   email: string;
-  createdAt: Date;
+  hasSubscription?: boolean;
+  subscriptionExpiry?: Date;
 };
 
 type UserContextType = {
@@ -73,30 +75,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Email e senha são obrigatórios');
       }
       
-      // Always use mock authentication since we're in a browser environment
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call backend API to authenticate
+      const response = await axios.post('/server/login', { email, password });
       
-      const mockUser: User = {
-        id: crypto.randomUUID(),
-        name: email.split('@')[0], // Simple name from email
-        email,
-        createdAt: new Date(),
-      };
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Falha ao fazer login');
+      }
       
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      const userData: User = response.data.user;
+      
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
       
       toast({
-        title: "Login realizado com sucesso (modo offline)",
-        description: `Bem-vindo de volta, ${mockUser.name}!`,
+        title: "Login realizado com sucesso",
+        description: `Bem-vindo de volta, ${userData.name}!`,
       });
       
       return true;
     } catch (err: any) {
-      setError(err.message || 'Falha ao fazer login');
+      const errorMessage = err.response?.data?.error || err.message || 'Falha ao fazer login';
+      setError(errorMessage);
       toast({
         title: "Erro ao fazer login",
-        description: err.message || 'Verifique suas credenciais e tente novamente.',
+        description: errorMessage,
         variant: "destructive"
       });
       return false;
@@ -114,30 +116,35 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Todos os campos são obrigatórios');
       }
       
-      // Always use mock registration since we're in a browser environment
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Call backend API to register
+      const response = await axios.post('/server/users', { name, email, password });
       
-      const mockUser: User = {
-        id: crypto.randomUUID(),
-        name,
-        email,
-        createdAt: new Date(),
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Falha ao criar conta');
+      }
+      
+      const userData: User = {
+        id: response.data.user.id,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        hasSubscription: false
       };
       
-      setUser(mockUser);
-      localStorage.setItem('user', JSON.stringify(mockUser));
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
       
       toast({
-        title: "Cadastro realizado com sucesso (modo offline)",
+        title: "Cadastro realizado com sucesso",
         description: `Bem-vindo, ${name}!`,
       });
       
       return true;
     } catch (err: any) {
-      setError(err.message || 'Falha ao criar conta');
+      const errorMessage = err.response?.data?.error || err.message || 'Falha ao criar conta';
+      setError(errorMessage);
       toast({
         title: "Erro ao criar conta",
-        description: err.message || 'Verifique os dados e tente novamente.',
+        description: errorMessage,
         variant: "destructive"
       });
       return false;

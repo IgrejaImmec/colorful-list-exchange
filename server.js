@@ -2,7 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { userDb, paymentDb } = require('./src/services/dbService');
+const { userDb, paymentDb, listDb, itemDb, listStyleDb } = require('./src/services/dbService');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -39,7 +39,7 @@ app.post('/server/pix', async (req, res) => {
       }
     );
     
-    // Record payment in our database (for production use)
+    // Record payment in our database
     if (response.data && response.data.id) {
       await paymentDb.recordPayment({
         paymentId: response.data.id,
@@ -157,6 +157,249 @@ app.post('/server/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Error during login:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Lists endpoints
+// Get all lists for a user
+app.get('/server/users/:userId/lists', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const lists = await listDb.getListsByUserId(userId);
+    
+    res.json(lists);
+  } catch (error) {
+    console.error('Error getting user lists:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Create a new list
+app.post('/server/users/:userId/lists', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { title, description } = req.body;
+    
+    const newList = await listDb.createList(userId, title, description);
+    
+    res.status(201).json(newList);
+  } catch (error) {
+    console.error('Error creating list:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Get a list by ID
+app.get('/server/lists/:listId', async (req, res) => {
+  try {
+    const { listId } = req.params;
+    
+    const list = await listDb.getListById(listId);
+    if (!list) {
+      return res.status(404).json({
+        success: false,
+        error: 'List not found'
+      });
+    }
+    
+    // Get list style
+    const style = await listStyleDb.getListStyleByListId(listId);
+    
+    res.json({
+      ...list,
+      style: style || {
+        backgroundColor: '#ffffff',
+        accentColor: '#0078ff',
+        fontFamily: 'Inter, sans-serif',
+        borderRadius: 'rounded-2xl',
+        itemSpacing: '4',
+        backgroundImage: '',
+        backgroundPattern: '',
+        titleColor: '',
+        textColor: '',
+      }
+    });
+  } catch (error) {
+    console.error('Error getting list:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Check if a list exists
+app.get('/server/lists/:listId/exists', async (req, res) => {
+  try {
+    const { listId } = req.params;
+    
+    const exists = await listDb.listExists(listId);
+    
+    res.json({ exists });
+  } catch (error) {
+    console.error('Error checking if list exists:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Update a list
+app.put('/server/lists/:listId', async (req, res) => {
+  try {
+    const { listId } = req.params;
+    const { title, description, image, style } = req.body;
+    
+    // Update the list
+    await listDb.updateList(listId, { title, description, image });
+    
+    // Update the list style if provided
+    if (style) {
+      await listStyleDb.updateListStyle(listId, style);
+    }
+    
+    // Get the updated list and style
+    const updatedList = await listDb.getListById(listId);
+    const updatedStyle = await listStyleDb.getListStyleByListId(listId);
+    
+    res.json({
+      ...updatedList,
+      style: updatedStyle || {
+        backgroundColor: '#ffffff',
+        accentColor: '#0078ff',
+        fontFamily: 'Inter, sans-serif',
+        borderRadius: 'rounded-2xl',
+        itemSpacing: '4',
+        backgroundImage: '',
+        backgroundPattern: '',
+        titleColor: '',
+        textColor: '',
+      }
+    });
+  } catch (error) {
+    console.error('Error updating list:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Delete a list
+app.delete('/server/lists/:listId', async (req, res) => {
+  try {
+    const { listId } = req.params;
+    
+    await listDb.deleteList(listId);
+    
+    res.json({
+      success: true
+    });
+  } catch (error) {
+    console.error('Error deleting list:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Items endpoints
+// Get all items for a list
+app.get('/server/lists/:listId/items', async (req, res) => {
+  try {
+    const { listId } = req.params;
+    
+    const items = await itemDb.getItemsByListId(listId);
+    
+    res.json(items);
+  } catch (error) {
+    console.error('Error getting list items:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Create a new item
+app.post('/server/lists/:listId/items', async (req, res) => {
+  try {
+    const { listId } = req.params;
+    const { name, description } = req.body;
+    
+    const newItem = await itemDb.createItem(listId, name, description);
+    
+    res.status(201).json(newItem);
+  } catch (error) {
+    console.error('Error creating item:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Update an item
+app.put('/server/lists/:listId/items/:itemId', async (req, res) => {
+  try {
+    const { listId, itemId } = req.params;
+    const updateData = req.body;
+    
+    const updatedItem = await itemDb.updateItem(itemId, updateData);
+    
+    res.json(updatedItem);
+  } catch (error) {
+    console.error('Error updating item:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Delete an item
+app.delete('/server/lists/:listId/items/:itemId', async (req, res) => {
+  try {
+    const { listId, itemId } = req.params;
+    
+    await itemDb.deleteItem(itemId);
+    
+    res.json({
+      success: true
+    });
+  } catch (error) {
+    console.error('Error deleting item:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Claim an item
+app.post('/server/lists/:listId/items/:itemId/claim', async (req, res) => {
+  try {
+    const { listId, itemId } = req.params;
+    const { name, phone } = req.body;
+    
+    const updatedItem = await itemDb.claimItem(itemId, name, phone);
+    
+    res.json(updatedItem);
+  } catch (error) {
+    console.error('Error claiming item:', error);
     res.status(500).json({
       success: false,
       error: error.message
