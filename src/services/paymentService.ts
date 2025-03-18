@@ -43,6 +43,13 @@ export interface PaymentResponse {
   error?: string;
 }
 
+export interface PaymentStatus {
+  status: string;
+  approved: boolean;
+  message: string;
+  data?: any;
+}
+
 export interface SubscriptionOption {
   id: string;
   name: string;
@@ -93,7 +100,7 @@ const paymentService = {
     }
   },
   
-  // Verify payment status
+  // Verify payment status with detailed information
   verifyPayment: async (paymentId: string): Promise<{ status: string; approved: boolean }> => {
     try {
       const response = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -109,6 +116,102 @@ const paymentService = {
     } catch (error) {
       console.error('Payment verification error:', error);
       throw new Error('Falha ao verificar o status do pagamento');
+    }
+  },
+  
+  // Enhanced payment validation with detailed status information
+  validatePayment: async (paymentId: string): Promise<PaymentStatus> => {
+    if (!paymentId) {
+      return {
+        status: 'error',
+        approved: false,
+        message: 'ID de pagamento não fornecido'
+      };
+    }
+    
+    try {
+      const response = await axios.get(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+        headers: {
+          Authorization: `Bearer ${MERCADO_PAGO_TOKEN}`
+        }
+      });
+      
+      const data = response.data;
+      const status = data.status;
+      
+      // Create response based on payment status
+      switch (status) {
+        case 'approved':
+          return {
+            status,
+            approved: true,
+            message: 'Pagamento aprovado com sucesso!',
+            data
+          };
+        case 'pending':
+          return {
+            status,
+            approved: false,
+            message: 'Pagamento pendente. Aguardando confirmação...',
+            data
+          };
+        case 'in_process':
+          return {
+            status,
+            approved: false,
+            message: 'Pagamento em processamento...',
+            data
+          };
+        case 'rejected':
+          return {
+            status,
+            approved: false,
+            message: `Pagamento rejeitado: ${data.status_detail || ''}`,
+            data
+          };
+        case 'refunded':
+          return {
+            status,
+            approved: false,
+            message: 'Pagamento reembolsado',
+            data
+          };
+        case 'cancelled':
+          return {
+            status,
+            approved: false,
+            message: 'Pagamento cancelado',
+            data
+          };
+        case 'in_mediation':
+          return {
+            status,
+            approved: false,
+            message: 'Pagamento em mediação',
+            data
+          };
+        case 'charged_back':
+          return {
+            status,
+            approved: false,
+            message: 'Pagamento estornado',
+            data
+          };
+        default:
+          return {
+            status,
+            approved: false,
+            message: `Status desconhecido: ${status}`,
+            data
+          };
+      }
+    } catch (error) {
+      console.error('Payment validation error:', error);
+      return {
+        status: 'error',
+        approved: false,
+        message: error instanceof Error ? `Erro ao validar pagamento: ${error.message}` : 'Erro desconhecido ao validar pagamento'
+      };
     }
   },
   

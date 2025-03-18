@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import paymentService, { PaymentResponse } from "@/services/paymentService";
+import paymentService, { PaymentResponse, PaymentStatus } from "@/services/paymentService";
 import { ListItem as ListItemType } from "@/context/ListContext";
 
 // Form validation schema
@@ -41,6 +42,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   const [paymentData, setPaymentData] = useState<PaymentResponse | null>(null);
   const [paymentId, setPaymentId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+  const [validationResult, setValidationResult] = useState<PaymentStatus | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -109,6 +111,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     }
   };
   
+  // Improved payment verification using the new validation function
   const handleVerifyPayment = async () => {
     if (!paymentId) {
       toast({
@@ -122,20 +125,19 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setVerifying(true);
     
     try {
-      const result = await paymentService.verifyPayment(paymentId);
+      // Use the enhanced validation function
+      const result = await paymentService.validatePayment(paymentId);
+      setValidationResult(result);
       setPaymentStatus(result.status);
       
+      toast({
+        title: result.approved ? "Pagamento validado" : "Pagamento pendente",
+        description: result.message,
+        variant: result.approved ? "default" : "destructive"
+      });
+      
       if (result.approved) {
-        toast({
-          title: "Pagamento aprovado!",
-          description: "Seu pagamento foi confirmado com sucesso."
-        });
         await handleFinalize();
-      } else {
-        toast({
-          title: "Pagamento pendente",
-          description: "Seu pagamento ainda está sendo processado. Tente verificar novamente em alguns instantes.",
-        });
       }
     } catch (error) {
       console.error('Verification error:', error);
@@ -181,6 +183,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
     setPaymentData(null);
     setPaymentId(null);
     setPaymentStatus(null);
+    setValidationResult(null);
     form.reset();
   };
   
@@ -315,10 +318,13 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
                 <p className="text-sm text-muted-foreground mb-2">
                   Após efetuar o pagamento, clique em "Verificar Pagamento"
                 </p>
-                {paymentId && paymentStatus && (
-                  <p className="text-xs text-muted-foreground">
-                    Status atual: <span className="font-medium">{paymentStatus}</span>
-                  </p>
+                {paymentStatus && (
+                  <div className="text-xs text-muted-foreground">
+                    <p>Status atual: <span className="font-medium">{paymentStatus}</span></p>
+                    {validationResult && (
+                      <p className="mt-1">{validationResult.message}</p>
+                    )}
+                  </div>
                 )}
               </div>
               
