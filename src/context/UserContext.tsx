@@ -1,7 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
-import { testConnection } from '../services/dbService';
 import axios from 'axios';
 
 export type User = {
@@ -38,16 +37,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check database connection
     const checkDbConnection = async () => {
       try {
-        // In browser environments, this will always return false
-        const connected = await testConnection();
-        setDbConnected(connected);
-        if (!connected) {
-          console.log("Database connection not available, using offline mode");
+        // Check if backend is available
+        const response = await axios.get('/server');
+        setDbConnected(response.status === 200);
+        if (response.status !== 200) {
+          console.log("Server connection not available");
         } else {
-          console.log("Database connected successfully");
+          console.log("Server connected successfully");
         }
       } catch (error) {
-        console.error("Error checking database connection:", error);
+        console.error("Error checking server connection:", error);
         setDbConnected(false);
       }
     };
