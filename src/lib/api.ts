@@ -5,7 +5,7 @@ import axios from "axios";
 
 // Create an axios instance with default config
 const apiClient = axios.create({
-  baseURL: "/server", // Will connect to our Express server
+  baseURL: "http://localhost:3001/server", // Will connect to our Express server
   headers: {
     "Content-Type": "application/json",
   },
