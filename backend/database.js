@@ -16,11 +16,11 @@ async function initializeDatabase() {
   try {
     console.log('Initializing database connection...');
     connection = await mysql.createConnection(dbConfig);
-    
+
     console.log('Checking and creating tables if needed...');
-    // Check if tables exist and create them if they don't
-    
-    // Users table
+    // Criação das tabelas principais do sistema
+    // -----------------------------------------------------
+    // Tabela de Usuários
     await connection.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -33,8 +33,8 @@ async function initializeDatabase() {
         updated_at DATETIME
       )
     `);
-    
-    // Payments table
+
+    // Tabela de Pagamentos
     await connection.query(`
       CREATE TABLE IF NOT EXISTS payments (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -47,8 +47,8 @@ async function initializeDatabase() {
         updated_at DATETIME
       )
     `);
-    
-    // Lists table
+
+    // Tabela de Listas
     await connection.query(`
       CREATE TABLE IF NOT EXISTS lists (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -61,8 +61,8 @@ async function initializeDatabase() {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
-    
-    // Items table
+
+    // Tabela de Itens
     await connection.query(`
       CREATE TABLE IF NOT EXISTS items (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,8 +77,8 @@ async function initializeDatabase() {
         FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE
       )
     `);
-    
-    // List styles table
+
+    // Tabela de Estilo das Listas
     await connection.query(`
       CREATE TABLE IF NOT EXISTS list_styles (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -97,7 +97,23 @@ async function initializeDatabase() {
         FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE
       )
     `);
-    
+
+    // -----------------------------------------------------
+    // Criação de usuário admin de teste (caso não exista)
+    // Por padrão: email: admin@admin.com | senha: admin123
+    const [rows] = await connection.query(
+      "SELECT * FROM users WHERE email = 'admin@admin.com'"
+    );
+    if (rows.length === 0) {
+      await connection.query(
+        `INSERT INTO users (name, email, password, has_subscription, created_at) VALUES (?, ?, ?, ?, NOW())`,
+        ['Administrador', 'admin@admin.com', 'admin123', 1]
+      );
+      console.log('Usuário admin padrão criado: email=admin@admin.com senha=admin123');
+    } else {
+      console.log('Usuário admin já existe');
+    }
+
     console.log('Database tables initialized successfully.');
   } catch (error) {
     console.error('Error initializing database:', error);
