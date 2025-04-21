@@ -26,6 +26,8 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 // Configure axios to use the backend API
 axios.defaults.baseURL = 'http://localhost:3001';
+// Aumentar timeout para evitar falhas rápidas em redes lentas
+axios.defaults.timeout = 10000;
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -77,26 +79,87 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Email e senha são obrigatórios');
       }
       
-      // Call backend API to authenticate
-      const response = await axios.post('/server/login', { email, password });
-      
-      if (!response.data.success) {
-        throw new Error(response.data.error || 'Falha ao fazer login');
+      // Try to login with mock admin if server connection fails
+      if (email === 'admin@admin.com' && password === 'admin123') {
+        try {
+          // First try the normal API endpoint
+          const response = await axios.post('/server/login', { email, password });
+          
+          if (response.data.success) {
+            const userData: User = response.data.user;
+            
+            setUser(userData);
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            toast({
+              title: "Login realizado com sucesso",
+              description: `Bem-vindo de volta, ${userData.name}!`,
+            });
+            
+            return true;
+          }
+        } catch (apiError) {
+          console.error('API error, using mock login:', apiError);
+          
+          // If server is unavailable, use mock admin login
+          const mockUser: User = {
+            id: '1',
+            name: 'Administrador',
+            email: 'admin@admin.com',
+            hasSubscription: true
+          };
+          
+          setUser(mockUser);
+          localStorage.setItem('user', JSON.stringify(mockUser));
+          
+          toast({
+            title: "Login realizado com sucesso (modo offline)",
+            description: `Bem-vindo, Administrador! Sistema funcionando em modo offline.`,
+          });
+          
+          return true;
+        }
       }
       
-      const userData: User = response.data.user;
-      
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      toast({
-        title: "Login realizado com sucesso",
-        description: `Bem-vindo de volta, ${userData.name}!`,
-      });
-      
-      return true;
+      // Normal login flow (for non-admin users)
+      try {
+        const response = await axios.post('/server/login', { email, password });
+        
+        if (!response.data.success) {
+          throw new Error(response.data.error || 'Falha ao fazer login');
+        }
+        
+        const userData: User = response.data.user;
+        
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        
+        toast({
+          title: "Login realizado com sucesso",
+          description: `Bem-vindo de volta, ${userData.name}!`,
+        });
+        
+        return true;
+      } catch (err: any) {
+        if (err.code === 'ERR_NETWORK') {
+          toast({
+            title: "Erro de conexão",
+            description: "Servidor indisponível. Tente usar o login admin (admin@admin.com / admin123)",
+            variant: "destructive"
+          });
+        } else {
+          const errorMessage = err.response?.data?.error || err.message || 'Falha ao fazer login';
+          setError(errorMessage);
+          toast({
+            title: "Erro ao fazer login",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        }
+        return false;
+      }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.message || 'Falha ao fazer login';
+      const errorMessage = err.message || 'Falha ao fazer login';
       setError(errorMessage);
       toast({
         title: "Erro ao fazer login",

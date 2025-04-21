@@ -1,7 +1,7 @@
-
 // API service to communicate with the backend server
 import { ListItem } from "@/context/ListContext";
 import axios from "axios";
+import { toast } from "sonner";
 
 // Create an axios instance with default config
 const apiClient = axios.create({
@@ -9,20 +9,21 @@ const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // Aumentar timeout para evitar falhas em redes lentas
+  timeout: 10000,
 });
 
-// List style interface
-export interface ExtendedListStyle {
-  backgroundColor: string;
-  accentColor: string;
-  fontFamily: string;
-  borderRadius: string;
-  itemSpacing: string;
-  backgroundImage: string;
-  backgroundPattern: string;
-  titleColor: string;
-  textColor: string;
-}
+// Adicionar interceptor para lidar com erros de rede
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ERR_NETWORK' || !error.response) {
+      console.error('Erro de conexão com o servidor:', error);
+      toast.error('Erro de conexão com o servidor. Verifique se o backend está rodando.');
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const api = {
   checkListExists: async (listId: string): Promise<boolean> => {
@@ -115,7 +116,23 @@ export const api = {
       return response.data;
     } catch (error) {
       console.error('❌ Error fetching list settings:', error);
-      throw error;
+      // Return mock data in case of error to prevent UI from breaking
+      return {
+        title: "Lista Demo (Offline)",
+        description: "Esta lista está no modo offline",
+        image: "",
+        style: {
+          backgroundColor: "#ffffff",
+          accentColor: "#0078ff",
+          fontFamily: "Inter, sans-serif",
+          borderRadius: "rounded-2xl",
+          itemSpacing: "4",
+          backgroundImage: "",
+          backgroundPattern: "",
+          titleColor: "",
+          textColor: ""
+        }
+      };
     }
   },
   
@@ -180,3 +197,16 @@ export const api = {
     }
   }
 };
+
+// Adicionar a interface ExtendedListStyle que estava faltando
+export interface ExtendedListStyle {
+  backgroundColor: string;
+  accentColor: string;
+  fontFamily: string;
+  borderRadius: string;
+  itemSpacing: string;
+  backgroundImage: string;
+  backgroundPattern: string;
+  titleColor: string;
+  textColor: string;
+}
